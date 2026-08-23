@@ -309,6 +309,158 @@ leap|The deer {word} over the fence.|The dog has {word} into the water.
 spill|Tom {word} juice on the table.|Someone has {word} paint on the floor.
 spoil|The heat {word} the food.|The rain has {word} our picnic.
 `.trim().split('\n').map(line=>{const [base,past,participle]=line.split('|');return [base,{past,participle}]}));
+const sentenceMeanings = Object.fromEntries(`
+be|她长途步行后很累。|她一直对我们很有耐心。
+bear|这棵老树去年夏天结了果实。|小熊在初春出生了。
+beat|我们队昨天击败了冠军队。|还没有人打破她的纪录。
+become|暴风雨前天空变暗了。|他已经变得自信多了。
+begin|课程九点开始了。|音乐会已经开始了。
+bend|他把铁丝弯成了一个圆圈。|大雪已经压弯了树枝。
+bet|我在这场比赛上押了十美元。|她以前从未在比赛上下过注。
+bid|他们为这把椅子出价五十美元。|已有三位买家对这幅画出了价。
+bind|她用绳子把文件捆在一起。|我们已经把书牢牢地捆好了。
+bite|小狗昨天咬了我的鞋。|一只蚊子已经叮了我的手臂。
+bleed|他的手指划伤后流血了。|伤口已经流了几分钟的血。
+blow|强风刮了整整一夜。|暴风雨已经吹走了几片屋瓦。
+break|汤姆不小心打破了玻璃。|这一摔已经把他的手表摔坏了。
+breed|农户培育出了更强壮的马。|他们多年来一直在培育这个品种。
+bring|米娅带了午餐去学校。|他已经带来了我们需要的所有工具。
+broadcast|电台现场播送了这场比赛。|这家电视网已经播出过两次这段访谈。
+build|他们上周末搭了一间树屋。|我们已经建好了一个新的阅读角。
+burst|气球砰的一声爆了。|楼上的一根水管已经爆裂了。
+buy|我昨天买了这本笔记本。|她已经买了演出门票。
+cast|导演选她出演主角。|这盏灯已经在房间里投下了温暖的光。
+catch|利奥赶上了最后一班回家的公交车。|这只猫已经抓住了一只小老鼠。
+choose|我们昨天选了蓝色设计。|他们已经选出了新队长。
+cling|湿衬衫紧贴在他背上。|这个孩子整个上午都紧紧依偎着妈妈。
+come|我的表兄弟们昨晚来吃饭了。|快递终于到了。
+cost|这次维修的花费比预期更多。|这个错误已经耗费了我们宝贵的时间。
+creep|猫悄悄地爬向那只鸟。|雾已经慢慢蔼延到山谷里。
+cut|她把纸剪成了星星。|我已经把蛋糕切成了八块。
+deal|他冷静地处理了这起投诉。|我们以前处理过这个问题。
+dig|狗在花园里挖了一个洞。|工人们已经在这里挖了一条深沟。
+dive|她第一个跳进了游泳池。|救援队以前曾在这片水域潜水。
+do|我晚饭后做了家庭作业。|清单上的事情我们都已经做完了。
+draw|妮娜画了一幅湖景。|他已经为这次旅程画了一张地图。
+drink|他们在火炉旁喝了热巧克力。|我今天已经喝了足够的水。
+drive|爸爸开车送我们去了车站。|她已经两次驾车横穿这个国家。
+eat|我们午餐吃了面条。|孩子们已经把水果全部吃完了。
+fall|一片黄叶落在了我的书上。|暴风雨中已经倒了好几棵树。
+feed|山姆今早喂了兔子。|我们已经喂过狗了。
+feel|考试前我感到紧张。|从周一起她已经感觉好多了。
+fight|两个男孩为玩具打了起来。|他们一直在为平等权利而努力奋斗。
+find|我在沙发下面找到了钥匙。|科学家们已经找到了一个可能的解决方案。
+fit|这把旧钥匙与锁完全吻合。|这张新书桌放在角落里很合适。
+flee|小偷从后门逃走了。|许多家庭已经逃离了水淹地区。
+fly|风筝高高地飞过田野。|她以前坐过直升机。
+forbid|标牌禁止在湖里游泳。|学校已经禁止考试时使用手机。
+forget|我上周忘了他的生日。|她已经忘了把便条放在哪里。
+forgive|他道歉后，他们原谅了他。|我已经完全原谅了这个错误。
+freeze|湖面在寒冷的夜里结冰了。|水管又冻住了。
+get|我们在午夜前一会儿到了家。|他的国际象棋水平已经提高了很多。
+give|她给了我一个有用的建议。|他们已经给了我们充足的时间。
+go|我们昨天去了博物馆。|我父母已经去市场了。
+grind|机器把豆子磨得很细。|我已经磨了足够大家喝的咖啡。
+grow|这株植物在阳光下长得很快。|我们的城镇今年发展了很多。
+read|我昨晚读了那个故事。|她已经读完了这个系列的每一本书。
+ride|我们沿着河边骑了自行车。|他只骑过一次马。
+ring|吃晚饭时电话响了。|最后的铃声已经响过了。
+rise|太阳从山后升起。|价格这个月已经大幅上涨。
+hang|她把画挂在了书桌上方。|这件外套整个冬天都挂在那里。
+have|我们星期天进行了野餐。|我今天已经练习得够多了。
+hear|我听到外面有一个奇怪的声音。|我们已经听过这首歌很多次了。
+hide|本把礼物藏在了衣橱里。|狐狸已经藏在落叶下面了。
+hit|球砸到了窗户。|一根掉落的树枝已经砸中了屋顶。
+hold|她小心地抱着宝宝。|他们这周已经开了三次会议。
+hurt|我跑步时伤到了膝盖。|这些批评已经伤害了他的自信心。
+keep|我们昨天一直关着窗户。|她保留了你寄来的每一封信。
+know|我立刻就知道了答案。|我们已经相识多年。
+lay|这只母鸡昨天下了两个蛋。|他已经把钥匙放在桌上了。
+leave|他们六点离开了办公室。|火车已经离开车站了。
+light|她在黑暗中点燃了一支蜡烛。|他们已经用小灯照亮了小路。
+lose|我们队输掉了决赛。|我又把雨伞弄丢了。
+make|爸爸早餐做了煎饼。|我们已经制定了一个周密的计划。
+mean|她的微笑表明一切都很好。|这次延误已经给我们带来了额外工作。
+meet|我昨天见到了新老师。|我们以前已经见过好几次了。
+mistake|我把他误认为他的兄弟。|她一直把善良误认为软弱。
+overcome|这支队克服了所有障碍。|他已经克服了恐高症。
+overdo|我昨天运动过量了。|你在这汤里放了太多盐。
+overtake|红色汽车在高速公路上超过了我们。|我们的跑者已经超过了先前的领跑者。
+overthrow|叛军推翻了旧政府。|人民已经推翻了一位残暴的统治者。
+pay|她离开前付了账单。|我们已经在线支付了票款。
+plead|司机恳求再给一次机会。|他已经在法庭上认罪。
+prove|测试证明了这个想法行得通。|科学家们已经证明这个理论是正确的。
+put|我把牛奶放进了冰箱。|她已经把书放回书架了。
+quit|他上个月退出了队伍。|她已经戒掉了晚上喝咖啡的习惯。
+run|玛雅昨天跑了五公里。|这台发动机整天都运转得很顺畅。
+say|他向每个人问了好。|我能说的都已经说了。
+see|雨后我们看到了一道彩虹。|她已经看过那部电影两次了。
+seek|他们向医生寻求了帮助。|我们已经向几位专家征求了意见。
+sell|这家商店中午前就卖光了所有面包。|他们已经卖掉了旧车。
+send|我今早发送了邮件。|她已经给你发了一封邀请函。
+set|他把闹钟设在七点。|我们已经确定了会议日期。
+sew|奶奶给我的外套缝上了一颗扣子。|她已经缝好了一床漂亮的被子。
+shake|爆炸震动了窗户。|这个消息已经震惊了整个社区。
+shed|这棵树在秋天掉了叶子。|这只狗今天已经掉了很多毛。
+shine|月光透过云层照了进来。|太阳整个下午都在照耀。
+shoot|摄影师拍了数百张照片。|他们已经拍完了最后一场戏。
+show|他向我们展示了他的新发明。|结果已经显示出稳定的改善。
+shrink|我的毛衣洗后缩水了。|这个湖在干旱期间已经缩小了。
+shut|她轻轻地关上了门。|这家商店因节日已经关门了。
+sing|合唱团昨晚唱得很动听。|他已经唱过这首歌很多次了。
+sink|石头沉到了水底。|那艘受损的船已经沉在港口附近。
+sit|我们坐在窗边。|这只猫整个上午都坐在那里。
+sleep|宝宝睡了十个小时。|我这周已经睡得好多了。
+slide|玻璃杯从桌上滑了下去。|箱子已经滑过了地板。
+slit|他小心地裁开了信封。|有人已经沿一边割开了袋子。
+speak|我们的老师谈到了团队合作。|我已经和经理谈过了。
+speed|汽车飞快地驶过学校。|这名骑手已经加速超到队伍前方。
+spend|我们在海滩度过了下午。|她已经花光了所有积蓄。
+spin|舞者旋转着穿过舞台。|轮子已经转了几分钟。
+split|我们把披萨分成了六块。|这个小组已经分成了两队。
+spread|她把地图铺在了桌上。|消息已经传遍了全世界。
+spring|猫跳上了墙。|附近已经忽然出现了几家新店。
+stand|他站在入口附近。|这座老塔已经屹立了几个世纪。
+steal|昨天有人偷了我的自行车。|一个小偷已经偷走了这幅画。
+stick|便条粘在了湿窗户上。|泥巴已经粘在我的鞋上了。
+sting|一只蜜蜂蜇了我的手。|冷风已经吹得我的脸刺痛。
+stink|旧垃圾臭气熏天。|厨房一整天都有烟味。
+strike|闪电击中了那棵高树。|工人们已经为争取更高工资而罢工。
+strive|她努力每天进步。|我们多年来一直为同一个目标而奋斗。
+swear|他发誓自己说的是真话。|他们已经发誓保守秘密。
+sweep|我晚饭后打扫了厨房。|她已经把所有树叶扫走了。
+swell|他的脚踝摔伤后肿了起来。|连日降雨后河水已经上涨。
+swim|我们昨天游过了这个湖。|她已经在海里游过很多次。
+swing|门突然摆开了。|情绪已经从希望转向担忧。
+take|我坐公交车去了学校。|她今天已经拍了很多照片。
+teach|李老师去年教我们英语。|她已经在这里教了十年书。
+tear|他把纸撕成了两半。|小狗已经把靠垫撕开了。
+tell|米娅给我们讲了一个有趣的故事。|我知道的一切都已经告诉你了。
+think|我们觉得这次考试很难。|我已经认真考虑过你的想法了。
+throw|他把球扔过了栅栏。|有人已经把收据扔掉了。
+understand|我终于明白了说明。|我们已经理解了主要问题。
+uphold|法院维持了早先的判决。|他们一直公平地维护这些规则。
+upset|坏消息使每个人都很难过。|突然的变化已经打乱了我们的计划。
+wake|我在日出前醒了。|噪音已经吵醒了宝宝。
+wear|她昨天穿了一件红色外套。|他已经穿那双鞋好几年了。
+weave|工匠编了一个彩色篮子。|他们已经编成了一条结实的绳子。
+wed|这对夫妇在一个小型仪式上结了婚。|他们相伴多年后结婚了。
+weep|她听到这个消息时哭了。|他已经如释重负地哭了。
+win|我们学校赢得了比赛。|她今年已经赢得了三枚奖牌。
+wind|我们把绳子绕在了柱子上。|这条小路已经在森林中蜿蜒了好几英里。
+withdraw|他昨天取了一些现金。|这家公司已经撤回了报价。
+withhold|银行扣留了最后一笔付款。|他们一直隐瞒重要信息。
+withstand|这座桥抵挡住了强风。|这种材料已经经受住多年使用。
+wring|她把布里的水拧了出来。|他已经把毛巾里的每一滴水都拧了出来。
+write|我给朋友写了一封信。|她目前已经写了五章。
+burn|火烧了一整夜。|太阳已经晒伤了我的肩膀。
+dream|我昨晚梦见了飞翔。|她多年来一直梦想着这一刻。
+kneel|他跪在受伤的跑者身边。|他们已经默默地跪了几分钟。
+learn|我们昨天学了一首新歌。|我已经从这个项目中学到了很多。
+leap|鹿跃过了栅栏。|狗已经跳进了水里。
+spill|汤姆把果汁洒在了桌上。|有人已经把油漆洒在了地板上。
+spoil|高温使食物变质了。|这场雨已经毁了我们的野餐。
+`.trim().split('\n').map(line=>{const [base,past,participle]=line.split('|');return [base,{past,participle}]}));
 const exampleFormOverrides={dive:{participle:'dived'}};
 const similarFamilies = [
   ['keep','sleep','weep','sweep','creep'],
@@ -351,7 +503,7 @@ const normalize = value => value.trim().toLowerCase().replaceAll(/\s+/g,''); con
 const firstForm = value => value.split('/')[0];
 function exampleForm(verb,type){return exampleFormOverrides[verb.base]?.[type]||firstForm(verb[type])}
 function exampleHtml(template,word,revealed=false){return template.replace('{word}',revealed?`<mark>${word}</mark>`:'<span class="sentence-blank">_____</span>')}
-function renderMemoryExamples(verb,revealed=false){const examples=sentenceExamples[verb.base],past=exampleForm(verb,'past'),participle=exampleForm(verb,'participle');if(revealed){$('#fullPastSentence').innerHTML=exampleHtml(examples.past,past,true);$('#fullParticipleSentence').innerHTML=exampleHtml(examples.participle,participle,true)}else{$('#maskedPastSentence').innerHTML=exampleHtml(examples.past,past);$('#maskedParticipleSentence').innerHTML=exampleHtml(examples.participle,participle)}}
+function renderMemoryExamples(verb,revealed=false){const examples=sentenceExamples[verb.base],translations=sentenceMeanings[verb.base],past=exampleForm(verb,'past'),participle=exampleForm(verb,'participle');if(revealed){$('#fullPastSentence').innerHTML=exampleHtml(examples.past,past,true);$('#fullParticipleSentence').innerHTML=exampleHtml(examples.participle,participle,true);$('#pastSentenceMeaning').textContent=translations.past;$('#participleSentenceMeaning').textContent=translations.participle}else{$('#maskedPastSentence').innerHTML=exampleHtml(examples.past,past);$('#maskedParticipleSentence').innerHTML=exampleHtml(examples.participle,participle)}}
 function commonSuffix(left,right){let count=0;while(count<left.length&&count<right.length&&left[left.length-1-count]===right[right.length-1-count])count++;return count}
 function formClass(verb){const past=firstForm(verb.past),participle=firstForm(verb.participle);return `${verb.base===past?'base-past':''}|${past===participle?'same-forms':''}|${verb.base===participle?'base-participle':''}`}
 function similarityScore(source,candidate){let score=formClass(source)===formClass(candidate)?8:0;score+=commonSuffix(source.base,candidate.base)*3;score+=commonSuffix(firstForm(source.past),firstForm(candidate.past))*2;score+=commonSuffix(firstForm(source.participle),firstForm(candidate.participle))*2;return score}

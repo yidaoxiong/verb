@@ -4,6 +4,8 @@
 body{margin:0;background:radial-gradient(circle at 10% 6%,#e7e5ff 0,transparent 26rem),radial-gradient(circle at 92% 20%,#d6f5f0 0,transparent 25rem),#f7f8fc;color:var(--ink);font-family:Nunito,'Noto Sans SC',sans-serif}
 .shell{width:min(100% - 32px,850px);margin:auto;padding:32px 0 54px}
 header{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px}
+.header-actions{display:flex;align-items:center;gap:9px}
+.version{padding:5px 8px;border:1px solid #dfe4f3;border-radius:999px;background:#ffffffa8;color:#71809b;font:800 10px 'DM Mono',monospace}
 .brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit}
 .brand>span{display:grid;place-items:center;width:48px;height:48px;border-radius:16px;background:linear-gradient(140deg,var(--blue),var(--violet));box-shadow:0 8px 16px #737be555;color:white;font:900 27px 'DM Mono',monospace;transform:rotate(-5deg)}
 small,.eyebrow{color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.11em}
@@ -130,6 +132,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 3px #576bf01b}
 .full-examples article{border:1px solid #dceee8;background:#f5fcf9}
 .full-examples span{color:#32866d}
 .full-examples mark{padding:1px 4px;border-radius:5px;background:#d6f5e8;color:#167456;font:900 16px 'DM Mono',monospace}
+.full-examples .sentence-meaning{margin-top:9px;padding-top:9px;border-top:1px dashed #cfe4dc;color:#62726d;font-family:'Noto Sans SC',sans-serif;font-size:13px;font-weight:500;line-height:1.65}
 .meaning-line{display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 15px;border-radius:14px;background:#fff7e8;color:#805c24}
 .meaning-line span{font-size:11px;font-weight:800}
 .meaning-line b{font-size:15px}
@@ -160,6 +163,8 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 3px #576bf01b}
 @media(max-width:700px){.dashboard{grid-template-columns:repeat(3,1fr)}
 }
 @media(max-width:600px){.shell{width:min(100% - 22px,850px);padding-top:20px}
+.header-actions{gap:6px}
+.version{padding:4px 6px;font-size:9px}
 .hero{grid-template-columns:1fr;padding:31px 25px}
 .hero h2{font-size:31px}
 .orbit{min-height:150px}
