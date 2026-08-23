@@ -157,6 +157,159 @@ leap|跳跃
 spill|洒出；溢出
 spoil|破坏；宠坏
 `.trim().split('\n').map(line=>line.split('|')));
+const sentenceExamples = Object.fromEntries(`
+be|She {word} tired after the long walk.|She has {word} very patient with us.
+bear|The old tree {word} fruit last summer.|The cub was {word} in early spring.
+beat|Our team {word} the champions yesterday.|No one has {word} her record yet.
+become|The sky {word} dark before the storm.|He has {word} much more confident.
+begin|The lesson {word} at nine o'clock.|The concert has already {word}.
+bend|He {word} the wire into a circle.|The heavy snow has {word} the branch.
+bet|I {word} ten dollars on the race.|She has never {word} on a game before.
+bid|They {word} fifty dollars for the chair.|Three buyers have {word} on the painting.
+bind|She {word} the papers with string.|We have {word} the books securely.
+bite|The puppy {word} my shoe yesterday.|A mosquito has {word} my arm.
+bleed|His finger {word} after the cut.|The wound has {word} for several minutes.
+blow|A strong wind {word} all night.|The storm has {word} several tiles away.
+break|Tom {word} the glass by accident.|The fall has {word} his watch.
+breed|The farmers {word} stronger horses.|They have {word} this variety for years.
+bring|Mia {word} her lunch to school.|He has {word} all the tools we need.
+broadcast|The station {word} the match live.|The network has {word} the interview twice.
+build|They {word} a tree house last weekend.|We have {word} a new reading corner.
+burst|The balloon {word} with a loud bang.|A water pipe has {word} upstairs.
+buy|I {word} this notebook yesterday.|She has {word} tickets for the show.
+cast|The director {word} her as the lead.|The lamp has {word} a warm light across the room.
+catch|Leo {word} the last bus home.|The cat has {word} a small mouse.
+choose|We {word} the blue design yesterday.|They have {word} a new team captain.
+cling|The wet shirt {word} to his back.|The child has {word} to her mother all morning.
+come|My cousins {word} to dinner last night.|The delivery has finally {word}.
+cost|The repair {word} more than expected.|This mistake has {word} us valuable time.
+creep|The cat {word} quietly toward the bird.|Fog has {word} across the valley.
+cut|She {word} the paper into stars.|I have {word} the cake into eight pieces.
+deal|He {word} with the complaint calmly.|We have {word} with this problem before.
+dig|The dog {word} a hole in the garden.|Workers have {word} a deep trench here.
+dive|She {word} into the pool first.|The rescue team has {word} in these waters before.
+do|I {word} my homework after dinner.|We have {word} everything on the list.
+draw|Nina {word} a picture of the lake.|He has {word} a map for the journey.
+drink|They {word} hot chocolate by the fire.|I have {word} enough water today.
+drive|Dad {word} us to the station.|She has {word} across the country twice.
+eat|We {word} noodles for lunch.|The children have {word} all the fruit.
+fall|A yellow leaf {word} onto my book.|Several trees have {word} in the storm.
+feed|Sam {word} the rabbits this morning.|We have already {word} the dog.
+feel|I {word} nervous before the test.|She has {word} much better since Monday.
+fight|The two boys {word} over the toy.|They have {word} hard for equal rights.
+find|I {word} my keys under the sofa.|Scientists have {word} a possible solution.
+fit|The old key {word} the lock perfectly.|The new desk has {word} into the corner well.
+flee|The thief {word} through the back door.|Many families have {word} the flooded area.
+fly|The kite {word} high above the field.|She has {word} in a helicopter before.
+forbid|The sign {word} swimming in the lake.|The school has {word} phones during exams.
+forget|I {word} his birthday last week.|She has {word} where she put the note.
+forgive|They {word} him after he apologized.|I have {word} the mistake completely.
+freeze|The lake {word} during the cold night.|The pipes have {word} again.
+get|We {word} home just before midnight.|He has {word} much better at chess.
+give|She {word} me a helpful suggestion.|They have {word} us plenty of time.
+go|We {word} to the museum yesterday.|My parents have {word} to the market.
+grind|The machine {word} the beans finely.|I have {word} enough coffee for everyone.
+grow|The plant {word} quickly in the sun.|Our town has {word} a lot this year.
+read|I {word} that story last night.|She has {word} every book in the series.
+ride|We {word} our bikes along the river.|He has {word} a horse only once.
+ring|The phone {word} during dinner.|The final bell has already {word}.
+rise|The sun {word} behind the hills.|Prices have {word} sharply this month.
+hang|She {word} the picture above the desk.|The coat has {word} there all winter.
+have|We {word} a picnic on Sunday.|I have {word} enough practice for today.
+hear|I {word} a strange sound outside.|We have {word} this song many times.
+hide|Ben {word} the gift in his closet.|The fox has {word} beneath the leaves.
+hit|The ball {word} the window.|A fallen branch has {word} the roof.
+hold|She {word} the baby carefully.|They have {word} three meetings this week.
+hurt|I {word} my knee while running.|The criticism has {word} his confidence.
+keep|We {word} the windows closed yesterday.|She has {word} every letter you sent.
+know|I {word} the answer immediately.|We have {word} each other for years.
+lay|The hen {word} two eggs yesterday.|He has {word} the keys on the table.
+leave|They {word} the office at six.|The train has already {word} the station.
+light|She {word} a candle in the dark.|They have {word} the path with small lamps.
+lose|Our team {word} the final match.|I have {word} my umbrella again.
+make|Dad {word} pancakes for breakfast.|We have {word} a careful plan.
+mean|Her smile {word} that everything was fine.|This delay has {word} extra work for us.
+meet|I {word} the new teacher yesterday.|We have {word} several times before.
+mistake|I {word} him for his brother.|She has {word} kindness for weakness.
+overcome|The team {word} every obstacle.|He has {word} his fear of heights.
+overdo|I {word} the exercise yesterday.|You have {word} the salt in this soup.
+overtake|The red car {word} us on the highway.|Our runner has {word} the early leader.
+overthrow|The rebels {word} the old government.|The people have {word} a cruel ruler.
+pay|She {word} the bill before leaving.|We have {word} for the tickets online.
+plead|The driver {word} for another chance.|He has {word} guilty in court.
+prove|The test {word} that the idea worked.|Scientists have {word} the theory correct.
+put|I {word} the milk in the fridge.|She has {word} the books back on the shelf.
+quit|He {word} the team last month.|She has {word} drinking coffee at night.
+run|Maya {word} five kilometers yesterday.|This engine has {word} smoothly all day.
+say|He {word} hello to everyone.|I have {word} all that I can.
+see|We {word} a rainbow after the rain.|She has {word} that movie twice.
+seek|They {word} help from a doctor.|We have {word} advice from several experts.
+sell|The shop {word} all its bread by noon.|They have {word} their old car.
+send|I {word} the email this morning.|She has {word} you an invitation.
+set|He {word} the alarm for seven.|We have {word} a date for the meeting.
+sew|Grandma {word} a button onto my coat.|She has {word} a beautiful quilt.
+shake|The explosion {word} the windows.|The news has {word} the whole community.
+shed|The tree {word} its leaves in autumn.|The dog has {word} a lot of hair today.
+shine|The moon {word} through the clouds.|The sun has {word} all afternoon.
+shoot|The photographer {word} hundreds of photos.|They have {word} the final scene already.
+show|He {word} us his new invention.|The results have {word} steady improvement.
+shrink|My sweater {word} in the wash.|The lake has {word} during the drought.
+shut|She {word} the door quietly.|The store has {word} for the holiday.
+sing|The choir {word} beautifully last night.|He has {word} this song many times.
+sink|The stone {word} to the bottom.|The damaged boat has {word} near the harbor.
+sit|We {word} beside the window.|The cat has {word} there all morning.
+sleep|The baby {word} for ten hours.|I have {word} much better this week.
+slide|The glass {word} off the table.|The box has {word} across the floor.
+slit|He {word} the envelope open carefully.|Someone has {word} the bag along one side.
+speak|Our teacher {word} about teamwork.|I have {word} to the manager already.
+speed|The car {word} past the school.|The cyclist has {word} ahead of the group.
+spend|We {word} the afternoon at the beach.|She has {word} all her savings.
+spin|The dancer {word} across the stage.|The wheel has {word} for several minutes.
+split|We {word} the pizza into six pieces.|The group has {word} into two teams.
+spread|She {word} the map on the table.|The news has {word} around the world.
+spring|The cat {word} onto the wall.|Several new shops have {word} up nearby.
+stand|He {word} near the entrance.|The old tower has {word} for centuries.
+steal|Someone {word} my bicycle yesterday.|A thief has {word} the painting.
+stick|The note {word} to the wet window.|Mud has {word} to my shoes.
+sting|A bee {word} me on the hand.|The cold wind has {word} my face.
+stink|The old rubbish {word} terribly.|The kitchen has {word} of smoke all day.
+strike|Lightning {word} the tall tree.|The workers have {word} for better pay.
+strive|She {word} to improve every day.|We have {word} for the same goal for years.
+swear|He {word} that he was telling the truth.|They have {word} to keep the secret.
+sweep|I {word} the kitchen after dinner.|She has {word} all the leaves away.
+swell|His ankle {word} after the fall.|The river has {word} after days of rain.
+swim|We {word} across the lake yesterday.|She has {word} in the sea many times.
+swing|The door {word} open suddenly.|The mood has {word} from hope to worry.
+take|I {word} the bus to school.|She has {word} many photos today.
+teach|Mr. Lee {word} us English last year.|She has {word} here for a decade.
+tear|He {word} the paper in half.|The puppy has {word} the cushion apart.
+tell|Mia {word} us a funny story.|I have {word} you everything I know.
+think|We {word} the test was difficult.|I have {word} carefully about your idea.
+throw|He {word} the ball over the fence.|Someone has {word} away the receipt.
+understand|I finally {word} the instructions.|We have {word} the main problem.
+uphold|The court {word} the earlier decision.|They have {word} the rules fairly.
+upset|The bad news {word} everyone.|The sudden change has {word} our plans.
+wake|I {word} before sunrise.|The noise has {word} the baby.
+wear|She {word} a red coat yesterday.|He has {word} those shoes for years.
+weave|The artisan {word} a colorful basket.|They have {word} a strong rope.
+wed|The couple {word} in a small ceremony.|They have {word} after years together.
+weep|She {word} when she heard the news.|He has {word} with relief.
+win|Our school {word} the competition.|She has {word} three medals this year.
+wind|We {word} the rope around the post.|The path has {word} through the forest for miles.
+withdraw|He {word} some cash yesterday.|The company has {word} its offer.
+withhold|The bank {word} the final payment.|They have {word} important information.
+withstand|The bridge {word} the strong winds.|This material has {word} years of use.
+wring|She {word} the water from the cloth.|He has {word} every drop from the towel.
+write|I {word} a letter to my friend.|She has {word} five chapters so far.
+burn|The fire {word} all night.|The sun has {word} my shoulders.
+dream|I {word} about flying last night.|She has {word} of this moment for years.
+kneel|He {word} beside the injured runner.|They have {word} in silence for several minutes.
+learn|We {word} a new song yesterday.|I have {word} a lot from this project.
+leap|The deer {word} over the fence.|The dog has {word} into the water.
+spill|Tom {word} juice on the table.|Someone has {word} paint on the floor.
+spoil|The heat {word} the food.|The rain has {word} our picnic.
+`.trim().split('\n').map(line=>{const [base,past,participle]=line.split('|');return [base,{past,participle}]}));
+const exampleFormOverrides={dive:{participle:'dived'}};
 const similarFamilies = [
   ['keep','sleep','weep','sweep','creep'],
   ['bleed','feed','speed'],
@@ -196,6 +349,9 @@ const similarFamilies = [
 const $ = s => document.querySelector(s); let accountUser=null, progress={}, dailyHistory={}, totalReviewCount=0, queue=[], current=null, checked=false; let studyOrder=localStorage.getItem('verb-study-order')==='random'?'random':'sequential';
 const normalize = value => value.trim().toLowerCase().replaceAll(/\s+/g,''); const choices = value => normalize(value).split('/');
 const firstForm = value => value.split('/')[0];
+function exampleForm(verb,type){return exampleFormOverrides[verb.base]?.[type]||firstForm(verb[type])}
+function exampleHtml(template,word,revealed=false){return template.replace('{word}',revealed?`<mark>${word}</mark>`:'<span class="sentence-blank">_____</span>')}
+function renderMemoryExamples(verb,revealed=false){const examples=sentenceExamples[verb.base],past=exampleForm(verb,'past'),participle=exampleForm(verb,'participle');if(revealed){$('#fullPastSentence').innerHTML=exampleHtml(examples.past,past,true);$('#fullParticipleSentence').innerHTML=exampleHtml(examples.participle,participle,true)}else{$('#maskedPastSentence').innerHTML=exampleHtml(examples.past,past);$('#maskedParticipleSentence').innerHTML=exampleHtml(examples.participle,participle)}}
 function commonSuffix(left,right){let count=0;while(count<left.length&&count<right.length&&left[left.length-1-count]===right[right.length-1-count])count++;return count}
 function formClass(verb){const past=firstForm(verb.past),participle=firstForm(verb.participle);return `${verb.base===past?'base-past':''}|${past===participle?'same-forms':''}|${verb.base===participle?'base-participle':''}`}
 function similarityScore(source,candidate){let score=formClass(source)===formClass(candidate)?8:0;score+=commonSuffix(source.base,candidate.base)*3;score+=commonSuffix(firstForm(source.past),firstForm(candidate.past))*2;score+=commonSuffix(firstForm(source.participle),firstForm(candidate.participle))*2;return score}
@@ -226,8 +382,8 @@ function randomIndex(limit){if(globalThis.crypto?.getRandomValues){const value=n
 function shuffle(items){for(let index=items.length-1;index>0;index--){const target=randomIndex(index+1);[items[index],items[target]]=[items[target],items[index]]}return items}
 function buildQueue(){const now=Date.now(),due=verbs.filter(v=>!progress[v.base]||Date.parse(progress[v.base].dueAt)<=now);if(studyOrder==='sequential'||due.length<2)return due;const shuffled=shuffle([...due]);if(shuffled[0].base===due[0].base)[shuffled[0],shuffled[1]]=[shuffled[1],shuffled[0]];return shuffled}
 function startStudy(){if(!accountUser){openAuth();setMessage('请先登录，才能把复习安排保存到你的账号。');return}queue=buildQueue();$('#welcomePanel').classList.add('hidden');$('#dashboard').classList.add('hidden');$('#goalPanel').classList.add('hidden');$('#recentPanel').classList.add('hidden');$('.how').classList.add('hidden');$('#studyPanel').classList.remove('hidden');showNext()}
-function showNext(){checked=false;$('#answerReveal').classList.add('hidden');$('#completeState').classList.add('hidden');$('#card').classList.remove('hidden');current=queue.shift();if(!current){$('#card').classList.add('hidden');$('#completeState').classList.remove('hidden');renderStats();return}$('#questionLabel').textContent='同时写出两种变化';$('#baseWord').textContent=current.base;$('#promptText').textContent=`请填写 ${current.base} 的过去式和过去分词`;['#answerPastInput','#answerParticipleInput'].forEach(selector=>{$(selector).value='';$(selector).disabled=false});$('#answerPastInput').focus();$('#studyCount').textContent=`${studyOrder==='random'?'随机顺序':'表格顺序'} · 剩余 ${queue.length+1} 张`}
-function checkAnswer(event){event.preventDefault();if(checked||!current)return;const pastAnswer=normalize($('#answerPastInput').value),participleAnswer=normalize($('#answerParticipleInput').value);if(!pastAnswer){$('#answerPastInput').focus();return}if(!participleAnswer){$('#answerParticipleInput').focus();return}checked=true;const pastCorrect=choices(current.past).includes(pastAnswer),participleCorrect=choices(current.participle).includes(participleAnswer),correct=pastCorrect&&participleCorrect;$('#resultText').textContent=correct?'两个变化都正确！选择这张卡的真实难度：':`${pastCorrect?'过去式正确':'过去式需要再看'}，${participleCorrect?'过去分词正确':'过去分词需要再看'}。`;$('#resultText').className=correct?'right':'wrong';$('#revealBase').textContent=current.base;$('#revealPast').textContent=current.past;$('#revealParticiple').textContent=current.participle;$('#revealMeaning').textContent=meanings[current.base];renderRelated(current);['#answerPastInput','#answerParticipleInput'].forEach(selector=>$(selector).disabled=true);$('#answerReveal').classList.remove('hidden')}
+function showNext(){checked=false;$('#answerReveal').classList.add('hidden');$('#completeState').classList.add('hidden');$('#card').classList.remove('hidden');$('#revealAnswerButton').classList.remove('hidden');current=queue.shift();if(!current){$('#card').classList.add('hidden');$('#completeState').classList.remove('hidden');renderStats();return}$('#questionLabel').textContent='根据例句回忆两种变化';$('#baseWord').textContent=current.base;$('#promptText').textContent='先在心里补全两个空格，再显示答案';renderMemoryExamples(current);$('#studyCount').textContent=`${studyOrder==='random'?'随机顺序':'表格顺序'} · 剩余 ${queue.length+1} 张`}
+function revealAnswer(){if(checked||!current)return;checked=true;$('#revealPast').textContent=current.past;$('#revealParticiple').textContent=current.participle;$('#revealBase').textContent=current.base;$('#revealMeaning').textContent=meanings[current.base];renderMemoryExamples(current,true);renderRelated(current);$('#revealAnswerButton').classList.add('hidden');$('#answerReveal').classList.remove('hidden')}
 async function rateCard(rating){if(!current)return;document.querySelectorAll('[data-rating]').forEach(b=>b.disabled=true);try{const response=await fetch('/api/progress',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({verb:current.base,rating,date:localDate()})}),data=await response.json();if(!response.ok)throw new Error(data.error);progress[current.base]=data.card;if(data.dailyStat)dailyHistory[data.studyDate]={learned:Number(data.dailyStat.learned),uniqueLearned:Number(data.dailyStat.uniqueLearned),remembered:Number(data.dailyStat.remembered)};else{const day=dailyHistory[data.studyDate]||{learned:0,uniqueLearned:0,remembered:0};day.learned+=1;day.uniqueLearned+=1;if(['good','easy'].includes(rating))day.remembered+=1;dailyHistory[data.studyDate]=day}totalReviewCount+=1;showNext()}catch(error){alert(error.message||'保存失败，请稍后再试。')}finally{document.querySelectorAll('[data-rating]').forEach(b=>b.disabled=false)}}
 function leaveStudy(){$('#studyPanel').classList.add('hidden');$('#welcomePanel').classList.remove('hidden');$('#dashboard').classList.remove('hidden');$('#goalPanel').classList.remove('hidden');$('#recentPanel').classList.remove('hidden');$('.how').classList.remove('hidden');renderStats()}
-$('#accountButton').addEventListener('click',openAuth);$('#closeAuthButton').addEventListener('click',closeAuth);$('#authForm').addEventListener('submit',e=>{e.preventDefault();submitAuth('login')});$('#registerButton').addEventListener('click',()=>submitAuth('register'));$('#logoutButton').addEventListener('click',async()=>{await fetch('/api/auth',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'logout'})});accountUser=null;progress={};dailyHistory={};totalReviewCount=0;updateAccountUI();renderStats()});$('#startButton').addEventListener('click',startStudy);$('#answerForm').addEventListener('submit',checkAnswer);document.querySelectorAll('[data-rating]').forEach(button=>button.addEventListener('click',()=>rateCard(button.dataset.rating)));$('#studyOrderToggle').addEventListener('change',event=>setStudyOrder(event.target.checked?'random':'sequential'));$('#backButton').addEventListener('click',leaveStudy);$('#completeBackButton').addEventListener('click',leaveStudy);updateStudyOrderUI();loadAuth();
+$('#accountButton').addEventListener('click',openAuth);$('#closeAuthButton').addEventListener('click',closeAuth);$('#authForm').addEventListener('submit',e=>{e.preventDefault();submitAuth('login')});$('#registerButton').addEventListener('click',()=>submitAuth('register'));$('#logoutButton').addEventListener('click',async()=>{await fetch('/api/auth',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'logout'})});accountUser=null;progress={};dailyHistory={};totalReviewCount=0;updateAccountUI();renderStats()});$('#startButton').addEventListener('click',startStudy);$('#revealAnswerButton').addEventListener('click',revealAnswer);document.querySelectorAll('[data-rating]').forEach(button=>button.addEventListener('click',()=>rateCard(button.dataset.rating)));$('#studyOrderToggle').addEventListener('change',event=>setStudyOrder(event.target.checked?'random':'sequential'));$('#backButton').addEventListener('click',leaveStudy);$('#completeBackButton').addEventListener('click',leaveStudy);updateStudyOrderUI();loadAuth();

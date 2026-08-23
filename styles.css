@@ -111,21 +111,29 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 3px #576bf01b}
 .back{border:0;background:none;color:#5263c5;font:inherit;font-weight:900}
 .card{max-width:680px;margin:35px auto;text-align:center}
 .card h2{font:900 clamp(42px,8vw,70px) 'DM Mono',monospace;margin:9px 0}
-.card>#promptText{color:var(--muted);margin:0 0 25px}
-.card form{max-width:600px;margin:auto;grid-template-columns:1fr 1fr}
-.answer-grid label{text-align:left;color:#596982;font-size:11px;letter-spacing:.04em}
-.answer-grid label span{display:block;margin:0 0 6px 4px}
-.answer-grid .primary{grid-column:1/-1}
-.card input{margin:0;font:18px 'DM Mono',monospace;text-align:center}
+.card>#promptText{color:var(--muted);margin:0 0 22px}
+.memory-examples,.full-examples{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;text-align:left}
+.memory-examples article,.full-examples article{padding:17px 18px;border-radius:17px}
+.memory-examples article{border:1px solid #dfe4f6;background:#f9faff}
+.memory-examples span,.full-examples span{display:block;margin-bottom:8px;color:#5d6bc6;font-size:10px;font-weight:900;letter-spacing:.06em}
+.memory-examples p,.full-examples p{margin:0;color:#303c58;font-size:15px;line-height:1.65;font-weight:700}
+.sentence-blank{display:inline!important;margin:0!important;padding:1px 7px;border-bottom:2px solid #6978df;color:#6978df!important;font:900 16px 'DM Mono',monospace!important;letter-spacing:.08em!important}
+.reveal-answer{min-width:190px;margin-top:16px}
 .answer-reveal{margin-top:25px}
-.forms{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:15px 0 22px}
-.forms div{padding:13px 8px;border-radius:15px;background:#f7f8fd}
-.forms span,.forms b{display:block}
-.forms span{font-size:10px;color:var(--muted);font-weight:800}
-.forms b{font:700 15px 'DM Mono',monospace;margin-top:5px;overflow-wrap:anywhere}
+.answer-reveal>#resultText{color:var(--muted);font-size:12px}
+.answer-forms{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:15px 0}
+.answer-forms div{padding:17px 10px;border-radius:17px;background:linear-gradient(145deg,#edf0ff,#f6f3ff)}
+.answer-forms span,.answer-forms b{display:block}
+.answer-forms span{font-size:11px;color:#6371bd;font-weight:900}
+.answer-forms b{margin-top:5px;color:#4254c2;font:900 clamp(25px,5vw,36px) 'DM Mono',monospace;overflow-wrap:anywhere}
+.full-examples{margin-bottom:15px}
+.full-examples article{border:1px solid #dceee8;background:#f5fcf9}
+.full-examples span{color:#32866d}
+.full-examples mark{padding:1px 4px;border-radius:5px;background:#d6f5e8;color:#167456;font:900 16px 'DM Mono',monospace}
 .meaning-line{display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 15px;border-radius:14px;background:#fff7e8;color:#805c24}
 .meaning-line span{font-size:11px;font-weight:800}
 .meaning-line b{font-size:15px}
+.meaning-line i{font-style:normal}
 .related{margin:20px 0 22px;text-align:left}
 .related-title{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:9px}
 .related-title>span{font-size:13px;font-weight:900;color:#5362c2}
@@ -176,11 +184,9 @@ form{grid-template-columns:1fr}
 .auth-actions{grid-column:auto}
 .study{padding:20px 12px}
 .card{margin-top:28px}
-.card form{grid-template-columns:1fr}
-.answer-grid .primary{grid-column:auto}
-.card form .primary{margin-top:3px}
-.forms{gap:4px}
-.forms b{font-size:12px}
+.memory-examples,.full-examples{grid-template-columns:1fr}
+.memory-examples article,.full-examples article{padding:15px}
+.answer-forms b{font-size:25px}
 .related-title{align-items:start;flex-direction:column;gap:3px}
 .related-list{grid-template-columns:1fr}
 .ratings{grid-template-columns:repeat(2,1fr)}
