@@ -498,56 +498,7 @@ const similarFamilies = [
   ['weave','freeze'],
   ['win','spin']
 ];
-/* Legacy v1 implementation retained for reference; v2 logic follows below.
-if(false){
-const $ = s => document.querySelector(s); let accountUser=null, progress={}, dailyHistory={}, totalReviewCount=0, queue=[], current=null, checked=false; let studyOrder=localStorage.getItem('verb-study-order')==='random'?'random':'sequential';
-const normalize = value => value.trim().toLowerCase().replaceAll(/\s+/g,''); const choices = value => normalize(value).split('/');
-const firstForm = value => value.split('/')[0];
-function exampleForm(verb,type){return exampleFormOverrides[verb.base]?.[type]||firstForm(verb[type])}
-function exampleAnswers(verb,type){const override=exampleFormOverrides[verb.base]?.[type];return override?[override]:verb[type].split('/')}
-function exampleHtml(template,word,revealed=false,type='',answers=[word]){if(revealed)return template.replace('{word}',`<mark>${word}</mark>`);const characters=Math.max(...answers.map(answer=>answer.length)),label=type==='past'?'过去式':'过去分词';return template.replace('{word}',`<input class="sentence-input" data-answer-type="${type}" aria-label="请输入${label}" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="${characters}" size="${characters}" style="--characters:${characters}" placeholder="${'_'.repeat(characters)}" />`)}
-function renderMemoryExamples(verb,revealed=false){const examples=sentenceExamples[verb.base],translations=sentenceMeanings[verb.base],past=exampleForm(verb,'past'),participle=exampleForm(verb,'participle');if(revealed){$('#fullPastSentence').innerHTML=exampleHtml(examples.past,past,true);$('#fullParticipleSentence').innerHTML=exampleHtml(examples.participle,participle,true);$('#pastSentenceMeaning').textContent=translations.past;$('#participleSentenceMeaning').textContent=translations.participle}else{$('#maskedPastSentence').innerHTML=exampleHtml(examples.past,past,false,'past',exampleAnswers(verb,'past'));$('#maskedParticipleSentence').innerHTML=exampleHtml(examples.participle,participle,false,'participle',exampleAnswers(verb,'participle'))}}
-function judgeSentenceInput(type,answers){const input=$(`.sentence-input[data-answer-type="${type}"]`),correct=answers.map(normalize).includes(normalize(input.value));input.classList.add(correct?'correct':'incorrect');input.disabled=true;return correct}
-function commonSuffix(left,right){let count=0;while(count<left.length&&count<right.length&&left[left.length-1-count]===right[right.length-1-count])count++;return count}
-function formClass(verb){const past=firstForm(verb.past),participle=firstForm(verb.participle);return `${verb.base===past?'base-past':''}|${past===participle?'same-forms':''}|${verb.base===participle?'base-participle':''}`}
-function similarityScore(source,candidate){let score=formClass(source)===formClass(candidate)?8:0;score+=commonSuffix(source.base,candidate.base)*3;score+=commonSuffix(firstForm(source.past),firstForm(candidate.past))*2;score+=commonSuffix(firstForm(source.participle),firstForm(candidate.participle))*2;return score}
-function hasStrongSimilarity(source,candidate){return formClass(source)===formClass(candidate)&&commonSuffix(source.base,candidate.base)>=2&&commonSuffix(firstForm(source.past),firstForm(candidate.past))>=2&&commonSuffix(firstForm(source.participle),firstForm(candidate.participle))>=2}
-function relatedVerbs(base){const source=verbs.find(verb=>verb.base===base),family=similarFamilies.find(group=>group.includes(base));if(family)return family.filter(word=>word!==base).map(word=>verbs.find(verb=>verb.base===word)).filter(Boolean);return verbs.filter(verb=>verb.base!==base&&hasStrongSimilarity(source,verb)).sort((left,right)=>similarityScore(source,right)-similarityScore(source,left)).slice(0,4)}
-function renderRelated(verb){const related=relatedVerbs(verb.base);$('.related').classList.toggle('hidden',related.length===0);$('#relatedList').innerHTML=related.map(item=>`<article><b>${item.base}</b><span>${item.past} · ${item.participle}</span><small>${meanings[item.base]}</small></article>`).join('')}
-function setMessage(text,type=''){const el=$('#authMessage');el.textContent=text;el.className=`message ${type}`.trim()}
-function bytesToBase64Url(bytes){let binary='';for(const byte of bytes)binary+=String.fromCharCode(byte);return btoa(binary).replaceAll('+','-').replaceAll('/','_').replaceAll('=','')};function base64UrlToBytes(value){const padded=value.replaceAll('-','+').replaceAll('_','/')+'='.repeat((4-value.length%4)%4);return Uint8Array.from(atob(padded),char=>char.charCodeAt(0))};function newPasswordSalt(){const bytes=new Uint8Array(16);crypto.getRandomValues(bytes);return bytesToBase64Url(bytes)};async function passwordProof(password,salt){const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveBits']);const bits=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:base64UrlToBytes(salt),iterations:210000},key,256);return bytesToBase64Url(new Uint8Array(bits))};async function readAuthResponse(response){if(!(response.headers.get('content-type')||'').includes('application/json'))throw new Error('账号服务暂时没有正常响应，请稍后再试。');return response.json()}
-function updateAccountUI(){const inAccount=Boolean(accountUser);$('#authLoggedOut').classList.toggle('hidden',inAccount);$('#authLoggedIn').classList.toggle('hidden',!inAccount);$('#accountButton').textContent=inAccount?accountUser.username:'登录 / 注册';if(inAccount)$('#accountName').textContent=accountUser.username}
-function openAuth(){ $('#authPanel').classList.remove('hidden'); updateAccountUI(); if(!accountUser) $('#usernameInput').focus(); } function closeAuth(){$('#authPanel').classList.add('hidden')}
-async function authPayload(action,username,password){if(action==='register'){const salt=newPasswordSalt();return {passwordProof:await passwordProof(password,salt),passwordSalt:salt}}const response=await fetch('/api/auth',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'challenge',username})}),data=await readAuthResponse(response);if(!response.ok)throw new Error(data.error||'账号或密码不正确。');return data.scheme==='client-v1'?{passwordProof:await passwordProof(password,data.salt)}:{password}}
-async function submitAuth(action){const username=$('#usernameInput').value.trim(),password=$('#passwordInput').value;if(!username||!password){setMessage('请先填写账号和密码。','error');return}setMessage(action==='register'?'正在安全创建账号…':'正在安全登录…');try{const credentials=await authPayload(action,username,password),response=await fetch('/api/auth',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action,username,...credentials})}),data=await readAuthResponse(response);if(!response.ok)throw new Error(data.error||'操作未完成。');accountUser=data.user;$('#passwordInput').value='';updateAccountUI();setMessage('登录成功，复习安排已同步。','success');await loadProgress();closeAuth()}catch(error){setMessage(error.message||'操作未完成，请稍后再试。','error')}}
-async function loadAuth(){try{const response=await fetch('/api/auth'),data=await readAuthResponse(response);accountUser=data.user||null;updateAccountUI();if(accountUser)await loadProgress();else renderStats()}catch{accountUser=null;updateAccountUI();renderStats()}}
-const localDate=(offset=0)=>{const date=new Date(Date.now()-offset*86400000);return new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,10)};
-const DAILY_GOAL=30,GOAL_START='2026-08-02',GOAL_END='2026-08-31';
-function dateRange(start,end){const dates=[],cursor=new Date(`${start}T12:00:00`),last=new Date(`${end}T12:00:00`);while(cursor<=last){dates.push(new Date(cursor.getTime()-cursor.getTimezoneOffset()*60000).toISOString().slice(0,10));cursor.setDate(cursor.getDate()+1)}return dates}
-function dailyUnique(date){return dailyHistory[date]?.uniqueLearned||0}
-function currentGoalStreak(dates,today){let index=today>GOAL_END?dates.length-1:dates.indexOf(today);if(index<0)return 0;if(dailyUnique(dates[index])<DAILY_GOAL)index-=1;let streak=0;while(index>=0&&dailyUnique(dates[index])>=DAILY_GOAL){streak+=1;index-=1}return streak}
-function renderGoal(){const dates=dateRange(GOAL_START,GOAL_END),today=localDate(),todayCount=dailyUnique(today),completedDays=dates.filter(date=>dailyUnique(date)>=DAILY_GOAL).length,remainingDays=today>GOAL_END?0:dates.filter(date=>date>=today).length,streak=currentGoalStreak(dates,today);$('#todayGoalCount').textContent=accountUser?`${todayCount} / ${DAILY_GOAL}`:`— / ${DAILY_GOAL}`;$('#todayGoalStatus').textContent=accountUser&&todayCount>=DAILY_GOAL?'今日已打卡':'今日进度';$('#goalProgressBar').style.width=accountUser?`${Math.min(100,todayCount/DAILY_GOAL*100)}%`:'0%';$('#goalStreak').textContent=accountUser?streak:'—';$('#goalCompletedDays').textContent=accountUser?completedDays:'—';$('#goalRemainingDays').textContent=remainingDays;$('#checkinCalendar').innerHTML=dates.map(date=>{const count=dailyUnique(date),done=count>=DAILY_GOAL,status=!accountUser?'locked':done?'done':date<today?'missed':date===today?'today':'upcoming',icon=!accountUser?'—':done?'✓':date<today?'×':date===today?count:'·',detail=!accountUser?'登录查看':done?`${count}/${DAILY_GOAL}`:date<=today?`${count}/${DAILY_GOAL}`:'待打卡';return `<div class="goal-day ${status}"><span>${date.slice(5).replace('-','/')}</span><b>${icon}</b><small>${detail}</small></div>`}).join('')}
-function updateStudyOrderUI(){const random=studyOrder==='random';$('#studyOrderToggle').checked=random;$('#studyOrderHint').textContent=random?'每次开始都会重新打乱待复习动词':'将按照附件表格从前到后学习'}
-function setStudyOrder(order){studyOrder=order==='random'?'random':'sequential';localStorage.setItem('verb-study-order',studyOrder);updateStudyOrderUI()}
-async function loadProgress(){try{const response=await fetch('/api/progress'),data=await response.json();if(!response.ok)throw new Error(data.error);progress=Object.fromEntries(data.cards.map(item=>[item.verb,item]));dailyHistory=Object.fromEntries((data.dailyStats||data.dailyCounts||[]).map(item=>[item.date,{learned:Number(item.learned??item.count??0),uniqueLearned:Number(item.uniqueLearned??item.learned??item.count??0),remembered:Number(item.remembered??0)}]));totalReviewCount=Number(data.totalReviewCount||0);renderStats()}catch{progress={};dailyHistory={};totalReviewCount=0;renderStats()}}
-function recentRows(){const dates=Array.from({length:7},(_,index)=>localDate(6-index)),weekTotal=dates.reduce((sum,date)=>sum+(dailyHistory[date]?.learned||0),0);let cumulative=Math.max(0,totalReviewCount-weekTotal);return dates.map(date=>{const learned=dailyHistory[date]?.learned||0,remembered=dailyHistory[date]?.remembered||0;cumulative+=learned;return {date,learned,remembered,cumulative}})}
-function dayLabel(date){const value=new Date(`${date}T00:00:00`),weekdays=['周日','周一','周二','周三','周四','周五','周六'];return `${value.getMonth()+1}/${value.getDate()} ${weekdays[value.getDay()]}`}
-function renderHistory(){const rows=recentRows();$('#historyRows').innerHTML=rows.map(row=>`<tr><th>${dayLabel(row.date)}</th><td>${accountUser?row.learned:'—'}</td><td>${accountUser?row.remembered:'—'}</td><td>${accountUser?row.cumulative:'—'}</td></tr>`).join('')}
-function renderStats(){const now=Date.now(),done=Object.values(progress).filter(p=>p.repetitions>=2).length,due=verbs.filter(v=>!progress[v.base]||Date.parse(progress[v.base].dueAt)<=now).length,today=dailyUnique(localDate()),week=recentRows().reduce((sum,row)=>sum+row.learned,0);$('#dueCount').textContent=accountUser?due:'—';$('#todayStudyCount').textContent=accountUser?today:'—';$('#weekStudyCount').textContent=accountUser?week:'—';$('#learnedCount').textContent=accountUser?done:'—';$('#totalCount').textContent=verbs.length;renderGoal();renderHistory()}
-function randomIndex(limit){if(globalThis.crypto?.getRandomValues){const value=new Uint32Array(1);crypto.getRandomValues(value);return value[0]%limit}return Math.floor(Math.random()*limit)}
-function shuffle(items){for(let index=items.length-1;index>0;index--){const target=randomIndex(index+1);[items[index],items[target]]=[items[target],items[index]]}return items}
-function buildQueue(){const now=Date.now(),due=verbs.filter(v=>!progress[v.base]||Date.parse(progress[v.base].dueAt)<=now);if(studyOrder==='sequential'||due.length<2)return due;const shuffled=shuffle([...due]);if(shuffled[0].base===due[0].base)[shuffled[0],shuffled[1]]=[shuffled[1],shuffled[0]];return shuffled}
-function startStudy(){if(!accountUser){openAuth();setMessage('请先登录，才能把复习安排保存到你的账号。');return}queue=buildQueue();$('#welcomePanel').classList.add('hidden');$('#dashboard').classList.add('hidden');$('#goalPanel').classList.add('hidden');$('#recentPanel').classList.add('hidden');$('.how').classList.add('hidden');$('#studyPanel').classList.remove('hidden');showNext()}
-function showNext(){checked=false;$('#answerReveal').classList.add('hidden');$('#completeState').classList.add('hidden');$('#card').classList.remove('hidden');$('#revealAnswerButton').classList.remove('hidden');current=queue.shift();if(!current){$('#card').classList.add('hidden');$('#completeState').classList.remove('hidden');renderStats();return}$('#questionLabel').textContent='根据例句回忆两种变化';$('#baseWord').textContent=current.base;$('#promptText').textContent='在两个空格中输入答案，再点击检查';$('#resultText').textContent='对照答案和完整例句，再选择这张卡的真实难度。';$('#resultText').className='';renderMemoryExamples(current);$('.sentence-input')?.focus();$('#studyCount').textContent=`${studyOrder==='random'?'随机顺序':'表格顺序'} · 剩余 ${queue.length+1} 张`}
-function revealAnswer(){if(checked||!current)return;checked=true;const pastCorrect=judgeSentenceInput('past',exampleAnswers(current,'past')),participleCorrect=judgeSentenceInput('participle',exampleAnswers(current,'participle')),bothCorrect=pastCorrect&&participleCorrect;$('#resultText').textContent=bothCorrect?'两个答案都正确！再选择这张卡的真实难度。':`${pastCorrect?'过去式正确':'过去式需要再看'}，${participleCorrect?'过去分词正确':'过去分词需要再看'}。`;$('#resultText').className=bothCorrect?'right':'wrong';$('#revealPast').textContent=current.past;$('#revealParticiple').textContent=current.participle;$('#revealBase').textContent=current.base;$('#revealMeaning').textContent=meanings[current.base];renderMemoryExamples(current,true);renderRelated(current);$('#revealAnswerButton').classList.add('hidden');$('#answerReveal').classList.remove('hidden')}
-async function rateCard(rating){if(!current)return;document.querySelectorAll('[data-rating]').forEach(b=>b.disabled=true);try{const response=await fetch('/api/progress',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({verb:current.base,rating,date:localDate()})}),data=await response.json();if(!response.ok)throw new Error(data.error);progress[current.base]=data.card;if(data.dailyStat)dailyHistory[data.studyDate]={learned:Number(data.dailyStat.learned),uniqueLearned:Number(data.dailyStat.uniqueLearned),remembered:Number(data.dailyStat.remembered)};else{const day=dailyHistory[data.studyDate]||{learned:0,uniqueLearned:0,remembered:0};day.learned+=1;day.uniqueLearned+=1;if(['good','easy'].includes(rating))day.remembered+=1;dailyHistory[data.studyDate]=day}totalReviewCount+=1;showNext()}catch(error){alert(error.message||'保存失败，请稍后再试。')}finally{document.querySelectorAll('[data-rating]').forEach(b=>b.disabled=false)}}
-function leaveStudy(){$('#studyPanel').classList.add('hidden');$('#welcomePanel').classList.remove('hidden');$('#dashboard').classList.remove('hidden');$('#goalPanel').classList.remove('hidden');$('#recentPanel').classList.remove('hidden');$('.how').classList.remove('hidden');renderStats()}
-$('#accountButton').addEventListener('click',openAuth);$('#closeAuthButton').addEventListener('click',closeAuth);$('#authForm').addEventListener('submit',e=>{e.preventDefault();submitAuth('login')});$('#registerButton').addEventListener('click',()=>submitAuth('register'));$('#logoutButton').addEventListener('click',async()=>{await fetch('/api/auth',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'logout'})});accountUser=null;progress={};dailyHistory={};totalReviewCount=0;updateAccountUI();renderStats()});$('#startButton').addEventListener('click',startStudy);$('#revealAnswerButton').addEventListener('click',revealAnswer);$('#card').addEventListener('keydown',event=>{if(event.key==='Enter'&&event.target.matches('.sentence-input')){event.preventDefault();revealAnswer()}});document.querySelectorAll('[data-rating]').forEach(button=>button.addEventListener('click',()=>rateCard(button.dataset.rating)));$('#studyOrderToggle').addEventListener('change',event=>setStudyOrder(event.target.checked?'random':'sequential'));$('#backButton').addEventListener('click',leaveStudy);$('#completeBackButton').addEventListener('click',leaveStudy);updateStudyOrderUI();loadAuth();
-}
-
-*/
-// v2.0.0 application logic.  The legacy implementation above remains in a
-// dead block so the original verb data and review semantics stay auditable.
+// v2.1.0 learning application. Verb content and its progress API stay compatible.
 const $$ = selector => document.querySelector(selector);
 const normalization = globalThis.AnswerNormalization || { normalizeAnswer: value => String(value ?? '').trim().toLowerCase(), matches: (_module, entry, value) => String(entry?.answer || entry?.word || '').toLowerCase() === String(value || '').trim().toLowerCase() };
 const practiceLogic = globalThis.PracticeLogic || { buildVocabQueue: pool => [...pool].slice(0, 20), metrics: (startedAt, completedAt, correctCount) => { const elapsedSeconds = Math.max(1, Math.round((completedAt - startedAt) / 1000)); return { elapsedSeconds, speed: Math.round((20 * 60 / elapsedSeconds) * 10) / 10, accuracy: Math.round(correctCount / 20 * 100), correctCount }; } };
@@ -576,10 +527,11 @@ let sessionId = '';
 let sessionAnswers = [];
 let sessionMetrics = null;
 let sessionSaved = false;
+let vocabProgress = {}, vocabReady = false, vocabSaving = false, currentReviewId = '', letterTemplate = '';
 let studyOrder = localStorage.getItem('verb-study-order') === 'random' ? 'random' : 'sequential';
 const selectionState = {
-  school: { units: new Set(schoolWords.map(word => word.unit)), lessons: new Set(schoolWords.map(word => word.lesson)) },
-  houhai: { units: new Set(houhaiWords.map(word => word.unit)), lessons: new Set(houhaiWords.map(word => word.lesson)) },
+  school: { units: new Set(schoolWords.map(word => word.unit)), lessons: new Set(schoolWords.map(practiceLogic.lessonKey)) },
+  houhai: { units: new Set(houhaiWords.map(word => word.unit)), lessons: new Set(houhaiWords.map(practiceLogic.lessonKey)) },
 };
 
 const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
@@ -627,7 +579,7 @@ function newPasswordSalt() { const bytes = new Uint8Array(16); crypto.getRandomV
 async function passwordProof(password, salt) { const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']); const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: base64UrlToBytes(salt), iterations: 210000 }, key, 256); return bytesToBase64Url(new Uint8Array(bits)); }
 async function readAuthResponse(response) { if (!(response.headers.get('content-type') || '').includes('application/json')) throw new Error('账号服务暂时没有正常响应，请稍后再试。'); return response.json(); }
 function updateAccountUI() { const inAccount = Boolean(accountUser); $$('#authLoggedOut').classList.toggle('hidden', inAccount); $$('#authLoggedIn').classList.toggle('hidden', !inAccount); $$('#accountButton').textContent = inAccount ? accountUser.username : '登录 / 注册'; if (inAccount) $$('#accountName').textContent = accountUser.username; }
-function openAuth() { $$('#authPanel').classList.remove('hidden'); updateAccountUI(); if (!accountUser) $$('#usernameInput').focus(); }
+function openAuth() { if (vocabSaving) return; $$('#authPanel').classList.remove('hidden'); updateAccountUI(); if (!accountUser) $$('#usernameInput').focus(); }
 function closeAuth() { $$('#authPanel').classList.add('hidden'); }
 async function authPayload(action, username, password) { if (action === 'register') { const salt = newPasswordSalt(); return { passwordProof: await passwordProof(password, salt), passwordSalt: salt }; } const response = await fetch('/api/auth', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'challenge', username }) }); const data = await readAuthResponse(response); if (!response.ok) throw new Error(data.error || '账号或密码不正确。'); return data.scheme === 'client-v1' ? { passwordProof: await passwordProof(password, data.salt) } : { password }; }
 async function submitAuth(action) { const username = $$('#usernameInput').value.trim(); const password = $$('#passwordInput').value; if (!username || !password) { setMessage('请先填写账号和密码。', 'error'); return; } setMessage(action === 'register' ? '正在安全创建账号…' : '正在安全登录…'); try { const credentials = await authPayload(action, username, password); const response = await fetch('/api/auth', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, username, ...credentials }) }); const data = await readAuthResponse(response); if (!response.ok) throw new Error(data.error || '操作未完成。'); accountUser = data.user; $$('#passwordInput').value = ''; updateAccountUI(); setMessage('登录成功，学习记录已同步。', 'success'); await loadAccountData(); closeAuth(); } catch (error) { setMessage(error.message || '操作未完成，请稍后再试。', 'error'); } }
@@ -642,11 +594,42 @@ function studyDateForSession() { const today = localDate(); return today < GOAL_
 
 function dueTime(verb) { const card = progress[verb.base]; if (!card) return 0; const parsed = Date.parse(card.dueAt); return Number.isFinite(parsed) ? parsed : 0; }
 function buildVerbQueue() { const now = Date.now(); const indexed = verbs.map((verb, index) => ({ ...verb, sourceIndex: index + 1 })); const due = indexed.filter(verb => !progress[verb.base] || dueTime(verb) <= now).sort((left, right) => dueTime(left) - dueTime(right) || left.sourceIndex - right.sourceIndex); const future = indexed.filter(verb => progress[verb.base] && dueTime(verb) > now).sort((left, right) => dueTime(left) - dueTime(right) || left.sourceIndex - right.sourceIndex); const selected = [...due, ...future].slice(0, 20); if (studyOrder === 'random') return shuffle(selected); return selected; }
-function wordsFor(module) { const source = module === 'school' ? schoolWords : houhaiWords; const state = selectionState[module]; return source.filter(word => state.units.has(word.unit) && state.lessons.has(word.lesson)); }
-function buildVocabQueue(module) { const pool = wordsFor(module); return practiceLogic.buildVocabQueue(pool, randomIndex); }
+function wordsFor(module) { const source = module === 'school' ? schoolWords : houhaiWords; const state = selectionState[module]; return source.filter(word => state.units.has(word.unit) && state.lessons.has(practiceLogic.lessonKey(word))); }
+function buildVocabQueue(module) { return practiceLogic.scheduledQueue(wordsFor(module), vocabProgress, randomIndex); }
 
 function metadataHtml(entry, module, compact = false) { const first = `${entry.unit} · ${entry.lesson}`; const third = module === 'school' ? entry.lessonTitle : entry.category; return `<span>${escapeHtml(first)}</span><span>${escapeHtml(compact ? third : entry.topic)}</span>${!compact && third ? `<span>${escapeHtml(third)}</span>` : ''}`; }
-function renderFilters(module) { const prefix = module === 'school' ? 'school' : 'houhai'; const source = module === 'school' ? schoolWords : houhaiWords; const units = [...new Set(source.map(entry => entry.unit))]; const lessons = [...new Set(source.map(entry => entry.lesson))]; const state = selectionState[module]; const make = (values, kind) => values.map(value => `<label class="filter-option"><input type="checkbox" data-filter-module="${module}" data-filter-kind="${kind}" value="${escapeHtml(value)}" ${state[kind + 's'].has(value) ? 'checked' : ''} /><span>${escapeHtml(value)}</span></label>`).join(''); $$('#${prefix}UnitFilters'.replace('${prefix}', prefix)).innerHTML = make(units, 'unit'); $$('#${prefix}LessonFilters'.replace('${prefix}', prefix)).innerHTML = make(lessons, 'lesson'); document.querySelectorAll(`input[data-filter-module="${module}"]`).forEach(input => input.addEventListener('change', event => { const kind = event.target.dataset.filterKind + 's'; if (event.target.checked) state[kind].add(event.target.value); else state[kind].delete(event.target.value); renderPoolCount(module); })); renderPoolCount(module); }
+function renderFilters(module) {
+  const source = module === 'school' ? schoolWords : houhaiWords;
+  const state = selectionState[module];
+  const units = [...new Set(source.map(word => word.unit))];
+  const actions = kind => '<div class="filter-actions"><button type="button" data-select="' + kind + ':all">全选</button><button type="button" data-select="' + kind + ':none">全部取消</button></div>';
+  const option = (kind, value, label) => '<label class="filter-option"><input type="checkbox" data-kind="' + kind + '" value="' + escapeHtml(value) + '" ' + (state[kind].has(value) ? 'checked' : '') + ' /><span>' + escapeHtml(label) + '</span></label>';
+  $$('#' + module + 'UnitFilters').innerHTML = actions('units') + units.map(unit => option('units', unit, unit)).join('');
+  $$('#' + module + 'LessonFilters').innerHTML = actions('lessons') + units.filter(unit => state.units.has(unit)).map(unit => {
+    const words = source.filter(word => word.unit === unit);
+    return '<fieldset class="lesson-group"><legend>' + escapeHtml(unit) + '</legend><div class="lesson-options">' +
+      [...new Set(words.map(word => word.lesson))].map(lesson => option('lessons', unit + '::' + lesson, lesson)).join('') + '</div></fieldset>';
+  }).join('');
+  const panel = $$('#' + module + 'Selection');
+  panel.querySelectorAll('input[data-kind]').forEach(input => input.addEventListener('change', () => {
+    if (input.dataset.kind === 'units') {
+      const selected = new Set(state.units);
+      input.checked ? selected.add(input.value) : selected.delete(input.value);
+      practiceLogic.selectUnits(source, state, selected);
+      renderFilters(module);
+    } else {
+      input.checked ? state.lessons.add(input.value) : state.lessons.delete(input.value);
+      renderPoolCount(module);
+    }
+  }));
+  panel.querySelectorAll('[data-select]').forEach(button => button.addEventListener('click', () => {
+    const [kind, action] = button.dataset.select.split(':');
+    if (kind === 'units') practiceLogic.selectUnits(source, state, action === 'all' ? units : []);
+    else practiceLogic.selectLessons(source, state, action === 'all');
+    renderFilters(module);
+  }));
+  renderPoolCount(module);
+}
 function renderPoolCount(module) { const count = wordsFor(module).length; const element = $$(`#${module}PoolCount`); if (element) element.textContent = `词池 ${count} 个`; const button = $$(`#start${module[0].toUpperCase() + module.slice(1)}Button`); if (button) button.disabled = count < 1; }
 
 function latestSession(date, module) { return checkins.filter(item => item.studyDate === date && item.module === module).sort((left, right) => String(right.completedAt).localeCompare(String(left.completedAt)))[0] || null; }
@@ -672,7 +655,7 @@ async function flushRetryQueue() { if (!accountUser) return; const pending = get
 async function saveSession(payload) { try { const saved = await postCheckin(payload); if (saved) checkins = [...checkins.filter(item => item.sessionId !== saved.sessionId), saved]; setRetryQueue(getRetryQueue().filter(item => item.sessionId !== payload.sessionId)); renderDashboard(); return true; } catch { const pending = getRetryQueue().filter(item => item.sessionId !== payload.sessionId); pending.push(compactCheckinPayload(payload)); setRetryQueue(pending); return false; } }
 async function loadCheckins() { if (!accountUser) { checkins = []; renderDashboard(); return; } try { const response = await fetch(`/api/checkins?from=${GOAL_START}&to=${GOAL_END}`); const data = await response.json(); if (!response.ok) throw new Error(data.error); checkins = Array.isArray(data.sessions) ? data.sessions : []; } catch { checkins = []; } renderDashboard(); }
 async function loadProgress() { if (!accountUser) return; try { const response = await fetch('/api/progress'); const data = await response.json(); if (!response.ok) throw new Error(data.error); progress = Object.fromEntries((data.cards || []).map(item => [item.verb, item])); dailyHistory = Object.fromEntries((data.dailyStats || data.dailyCounts || []).map(item => [item.date, { learned: Number(item.learned ?? item.count ?? 0), uniqueLearned: Number(item.uniqueLearned ?? item.learned ?? item.count ?? 0), remembered: Number(item.remembered ?? 0) }])); totalReviewCount = Number(data.totalReviewCount || 0); } catch { progress = {}; dailyHistory = {}; totalReviewCount = 0; } }
-async function loadAccountData() { await Promise.all([loadProgress(), loadCheckins()]); await flushRetryQueue(); renderDashboard(); }
+async function loadAccountData() { await Promise.all([loadProgress(), loadCheckins(), loadVocabProgress()]); await flushRetryQueue(); renderDashboard(); }
 async function loadAuth() { try { const response = await fetch('/api/auth'); const data = await readAuthResponse(response); accountUser = data.user || null; updateAccountUI(); if (accountUser) await loadAccountData(); else renderDashboard(); } catch { accountUser = null; updateAccountUI(); renderDashboard(); } }
 
 function updateStudyOrderUI() { const toggle = $$('#studyOrderToggle'); if (!toggle) return; toggle.checked = studyOrder === 'random'; $$('#studyOrderHint').textContent = studyOrder === 'random' ? '每次开始会重新打乱 20 张待复习卡' : '按动词星球原表顺序安排 20 张卡'; }
@@ -682,19 +665,143 @@ function resetReveal() { checked = false; $$('#answerReveal').classList.add('hid
 function studyMetrics() { const elapsed = sessionMetrics?.elapsedSeconds || Math.max(1, Math.round((Date.now() - sessionStartedAt) / 1000)); const correct = sessionMetrics?.correctCount ?? sessionAnswers.filter(answer => answer.correct).length; return { elapsedSeconds: Math.max(1, elapsed), speed: Math.round((20 * 60 / Math.max(1, elapsed)) * 10) / 10, accuracy: Math.round(correct / 20 * 100), correctCount: correct }; }
 function setMetrics(metrics, target = 'finishMetrics') { const element = $$('#' + target); if (!element) return; if (target === 'finishMetrics') { $$('#elapsedMetric').textContent = metrics.elapsedSeconds; $$('#speedMetric').textContent = metrics.speed.toFixed(1); $$('#accuracyMetric').textContent = metrics.accuracy; } else { element.innerHTML = `<div><span>用时</span><strong>${metrics.elapsedSeconds}</strong><small>秒</small></div><div><span>速度</span><strong>${metrics.speed.toFixed(1)}</strong><small>题 / 分</small></div><div><span>正确率</span><strong>${metrics.accuracy}</strong><small>%</small></div>`; } element.classList.remove('hidden'); }
 function prepareVerbCard() { const verb = current; $$('#questionLabel').textContent = '根据例句回忆两种变化'; $$('#verbQuestionView').classList.remove('hidden'); $$('#vocabQuestionView').classList.add('hidden'); $$('#baseWord').textContent = verb.base; $$('#promptText').textContent = '在两个空格中输入答案，再点击检查'; $$('#resultText').textContent = '对照答案和完整例句，再选择这张卡的真实难度。'; $$('#resultText').className = ''; renderMemoryExamples(verb); $$('.sentence-input')?.focus(); }
-function prepareVocabCard() { const entry = current; $$('#questionLabel').textContent = currentModule === 'school' ? '学校单词 · 看中文写英文' : '厚海单词 · 看中文写英文'; $$('#verbQuestionView').classList.add('hidden'); $$('#vocabQuestionView').classList.remove('hidden'); $$('#frontMetadata').innerHTML = metadataHtml(entry, currentModule, true); $$('#vocabMeaning').textContent = entry.meaning; $$('#vocabChineseExample').textContent = entry.chineseExample; $$('#vocabInput').value = ''; $$('#vocabInput').maxLength = entry.maxAnswerLength || entry.answer.length; $$('#vocabInput').size = Math.max(3, entry.answerLength || entry.answer.length); $$('#vocabInput').style.setProperty('--answer-length', Math.max(3, entry.answerLength || entry.answer.length)); $$('#vocabInput').placeholder = '＿'.repeat(Math.max(3, entry.answerLength || entry.answer.length)); $$('#vocabInput').focus(); }
+function prepareVocabCard() {
+  $$('#questionLabel').textContent = MODULE_LABELS[currentModule] + ' · 看中文写英文';
+  $$('#verbQuestionView').classList.add('hidden');
+  $$('#vocabQuestionView').classList.remove('hidden');
+  $$('#frontMetadata').innerHTML = metadataHtml(current, currentModule, true);
+  $$('#vocabMeaning').textContent = current.meaning;
+  $$('#vocabChineseExample').textContent = current.chineseExample;
+  currentReviewId = crypto.randomUUID();
+  $$('#vocabSaveStatus').textContent = '';
+  $$('#vocabRatings').classList.add('hidden');
+  renderLetterInputs(0);
+}
 function showNext() { if (!queue.length) { showComplete(); return; } current = queue.shift(); currentQuestionNumber = sessionAnswers.length + 1; resetReveal(); $$('#card').classList.remove('hidden'); $$('#completeState').classList.add('hidden'); $$('#studyCount').textContent = `${MODULE_LABELS[currentModule]} · 第 ${currentQuestionNumber} / 20`; $$('#timerText').textContent = '计时中'; if (currentModule === 'verb') prepareVerbCard(); else prepareVocabCard(); }
-function startModule(module) { if (!accountUser) { openAuth(); setMessage('请先登录，才能保存学习记录。'); return; } const nextQueue = module === 'verb' ? buildVerbQueue() : buildVocabQueue(module); if (nextQueue.length < 20) { setMessage('词库不足以开始本次 20 题学习。', 'error'); return; } currentModule = module; queue = nextQueue; sessionStartedAt = Date.now(); sessionCompletedAt = 0; sessionId = crypto.randomUUID(); sessionAnswers = []; sessionMetrics = null; sessionSaved = false; hideHome(false); showNext(); }
+function startModule(module) { if (vocabSaving) return; if (accountUser && module !== 'verb' && !vocabReady) { openAuth(); setMessage('词汇复习安排还未同步，请稍后重试或刷新页面。', 'error'); return; } if (!accountUser) { openAuth(); setMessage('请先登录，才能保存学习记录。'); return; } const nextQueue = module === 'verb' ? buildVerbQueue() : buildVocabQueue(module); if (nextQueue.length < 20) { setMessage('词库不足以开始本次 20 题学习。', 'error'); return; } currentModule = module; queue = nextQueue; sessionStartedAt = Date.now(); sessionCompletedAt = 0; sessionId = crypto.randomUUID(); sessionAnswers = []; sessionMetrics = null; sessionSaved = false; hideHome(false); showNext(); }
 function setSessionMetrics() { if (!sessionMetrics) { const elapsedSeconds = Math.max(1, Math.round((Date.now() - sessionStartedAt) / 1000)); const correctCount = sessionAnswers.filter(answer => answer.correct).length + (sessionAnswers.length === 20 ? 0 : (currentQuestionCorrect ? 1 : 0)); sessionCompletedAt = Date.now(); sessionMetrics = { elapsedSeconds, correctCount, speed: Math.round((20 * 60 / elapsedSeconds) * 10) / 10, accuracy: Math.round(correctCount / 20 * 100) }; } setMetrics(sessionMetrics); }
 async function persistCurrentSession() { if (sessionSaved || sessionAnswers.length !== 20) return true; setSessionMetrics(); const payload = { sessionId, module: currentModule, studyDate: studyDateForSession(), startedAt: new Date(sessionStartedAt).toISOString(), completedAt: new Date(sessionCompletedAt || Date.now()).toISOString(), elapsedSeconds: sessionMetrics.elapsedSeconds, answers: sessionAnswers }; const saved = await saveSession(payload); sessionSaved = saved; if (!saved) setMessage('本次打卡暂时离线保存，将在下次登录时自动重试。', 'error'); return saved; }
 function revealVerbAnswer() { if (checked || !current) return; checked = true; const pastCorrect = judgeSentenceInput('past', exampleAnswers(current, 'past')); const participleCorrect = judgeSentenceInput('participle', exampleAnswers(current, 'participle')); currentQuestionCorrect = pastCorrect && participleCorrect; $$('#resultText').textContent = currentQuestionCorrect ? '两个答案都正确！再选择这张卡的真实难度。' : `${pastCorrect ? '过去式正确' : '过去式需要再看'}，${participleCorrect ? '过去分词正确' : '过去分词需要再看'}。`; $$('#resultText').className = currentQuestionCorrect ? 'right' : 'wrong'; $$('#revealPast').textContent = current.past; $$('#revealParticiple').textContent = current.participle; $$('#revealBase').textContent = current.base; $$('#revealMeaning').textContent = meanings[current.base]; renderMemoryExamples(current, true); renderRelated(current); $$('#revealAnswerButton').classList.add('hidden'); $$('#answerReveal').classList.remove('hidden'); if (currentQuestionNumber === 20) { const elapsedSeconds = Math.max(1, Math.round((Date.now() - sessionStartedAt) / 1000)); const correctCount = sessionAnswers.filter(answer => answer.correct).length + (currentQuestionCorrect ? 1 : 0); sessionCompletedAt = Date.now(); sessionMetrics = { elapsedSeconds, correctCount, speed: Math.round((20 * 60 / elapsedSeconds) * 10) / 10, accuracy: Math.round(correctCount / 20 * 100) }; setMetrics(sessionMetrics); } }
 async function rateCard(rating) { if (!current || !checked) return; document.querySelectorAll('[data-rating]').forEach(button => { button.disabled = true; }); try { const response = await fetch('/api/progress', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ verb: current.base, rating, date: studyDateForSession() }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); progress[current.base] = data.card; if (data.dailyStat) dailyHistory[data.studyDate] = { learned: Number(data.dailyStat.learned), uniqueLearned: Number(data.dailyStat.uniqueLearned), remembered: Number(data.dailyStat.remembered) }; else { const day = dailyHistory[data.studyDate] || { learned: 0, uniqueLearned: 0, remembered: 0 }; day.learned += 1; day.uniqueLearned += 1; if (['good', 'easy'].includes(rating)) day.remembered += 1; dailyHistory[data.studyDate] = day; } totalReviewCount += 1; sessionAnswers.push({ questionId: `verb:${current.base}`, correct: currentQuestionCorrect }); if (sessionAnswers.length === 20) { await persistCurrentSession(); showComplete(); } else showNext(); } catch (error) { setMessage(error.message || '保存失败，请稍后再试。', 'error'); } finally { document.querySelectorAll('[data-rating]').forEach(button => { button.disabled = false; }); } }
-async function revealVocabAnswer() { if (checked || !current) return; checked = true; currentQuestionCorrect = normalization.matches(currentModule, current, $$('#vocabInput').value); const input = $$('#vocabInput'); input.classList.add(currentQuestionCorrect ? 'correct' : 'incorrect'); input.disabled = true; sessionAnswers.push({ questionId: current.id, correct: currentQuestionCorrect }); $$('#resultText').textContent = currentQuestionCorrect ? '回答正确！请看背面的完整词条。' : '再看一遍答案和完整例句，继续下一题。'; $$('#resultText').className = currentQuestionCorrect ? 'right' : 'wrong'; $$('#vocabWord').textContent = current.word; $$('#vocabPronunciation').textContent = `${current.pronunciation} · ${current.partOfSpeech}`; $$('#vocabEnglishExample').textContent = current.englishExample; $$('#backMetadata').innerHTML = metadataHtml(current, currentModule, false); $$('#revealAnswerButton').classList.add('hidden'); $$('#answerReveal').classList.remove('hidden'); $$('#vocabAnswerContent').classList.remove('hidden'); $$('#ratingBlock').classList.add('hidden'); $$('#nextQuestionButton').classList.remove('hidden'); $$('#nextQuestionButton').innerHTML = currentQuestionNumber === 20 ? '查看完成结果 <span>→</span>' : '下一题 <span>→</span>'; if (currentQuestionNumber === 20) { setSessionMetrics(); await persistCurrentSession(); } }
+function revealVocabAnswer() {
+  if (checked || !current) return;
+  syncLetters();
+  checked = true;
+  currentQuestionCorrect = normalization.matches(currentModule, current, $$('#vocabInput').value);
+  document.querySelectorAll('.letter-cell, #spellingVariants button').forEach(input => { input.disabled = true; });
+  $$('#letterInputs').classList.add(currentQuestionCorrect ? 'correct' : 'incorrect');
+  $$('#resultText').textContent = currentQuestionCorrect ? '回答正确！这个单词记住了吗？' : '对照完整答案，再选择你的记忆情况。';
+  $$('#resultText').className = currentQuestionCorrect ? 'right' : 'wrong';
+  $$('#vocabWord').textContent = current.word;
+  $$('#vocabPronunciation').textContent = current.pronunciation + ' · ' + current.partOfSpeech;
+  $$('#vocabEnglishExample').textContent = current.englishExample;
+  $$('#backMetadata').innerHTML = metadataHtml(current, currentModule, false);
+  $$('#revealAnswerButton').classList.add('hidden');
+  $$('#answerReveal').classList.remove('hidden');
+  $$('#vocabAnswerContent').classList.remove('hidden');
+  $$('#vocabRatings').classList.remove('hidden');
+  if (currentQuestionNumber === 20) setSessionMetrics();
+}
 function showComplete() { const metrics = sessionMetrics || studyMetrics(); $$('#card').classList.add('hidden'); $$('#completeState').classList.remove('hidden'); $$('#completeTitle').textContent = `${MODULE_LABELS[currentModule]}完成！`; $$('#completeSummary').textContent = sessionSaved ? '本次 20 题已记录，继续保持。' : '本次 20 题已完成，记录将在网络恢复后保存。'; setMetrics(metrics, 'completeMetrics'); $$('#timerText').textContent = `${metrics.elapsedSeconds} 秒`; renderDashboard(); }
 function nextQuestion() { if (!checked) return; if (currentQuestionNumber === 20) showComplete(); else showNext(); }
-function leaveStudy() { queue = []; current = null; hideHome(true); renderDashboard(); }
+function leaveStudy() { if (vocabSaving) return; queue = []; current = null; hideHome(true); renderDashboard(); }
 
-$$('#accountButton').addEventListener('click', openAuth); $$('#closeAuthButton').addEventListener('click', closeAuth); $$('#authForm').addEventListener('submit', event => { event.preventDefault(); submitAuth('login'); }); $$('#registerButton').addEventListener('click', () => submitAuth('register')); $$('#logoutButton').addEventListener('click', async () => { await fetch('/api/auth', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'logout' }) }); accountUser = null; progress = {}; dailyHistory = {}; totalReviewCount = 0; checkins = []; updateAccountUI(); renderDashboard(); });
-$$('#startVerbButton').addEventListener('click', () => startModule('verb')); $$('#startSchoolButton').addEventListener('click', () => startModule('school')); $$('#startHouhaiButton').addEventListener('click', () => startModule('houhai')); $$('#revealAnswerButton').addEventListener('click', () => currentModule === 'verb' ? revealVerbAnswer() : revealVocabAnswer()); $$('#nextQuestionButton').addEventListener('click', nextQuestion); $$('#card').addEventListener('keydown', event => { if (event.key !== 'Enter') return; if (event.target.matches('.sentence-input')) { event.preventDefault(); revealVerbAnswer(); } if (event.target.matches('#vocabInput')) { event.preventDefault(); revealVocabAnswer(); } }); document.querySelectorAll('[data-rating]').forEach(button => button.addEventListener('click', () => rateCard(button.dataset.rating))); $$('#studyOrderToggle')?.addEventListener('change', event => setStudyOrder(event.target.checked ? 'random' : 'sequential')); $$('#backButton').addEventListener('click', leaveStudy); $$('#completeBackButton').addEventListener('click', leaveStudy); renderFilters('school'); renderFilters('houhai'); updateStudyOrderUI(); renderDashboard(); loadAuth(); window.addEventListener('resize', () => renderCharts());
+async function loadVocabProgress() {
+  vocabReady = false;
+  vocabProgress = {};
+  try {
+    const response = await fetch('/api/vocab-progress');
+    const data = await response.json();
+    if (!response.ok) throw Error(data.error);
+    vocabProgress = Object.fromEntries(data.cards.map(card => [card.itemId, card]));
+    vocabReady = true;
+  } catch { setMessage('词汇复习安排暂时无法同步，请刷新后重试。', 'error'); }
+}
+function syncLetters() {
+  const cells = [...document.querySelectorAll('.letter-cell')];
+  let index = 0;
+  $$('#vocabInput').value = [...letterTemplate].map(char => /[a-z0-9]/i.test(char) ? cells[index++].value || '' : char).join('');
+}
+function renderLetterInputs(variantIndex) {
+  const variants = normalization.variantsFor(currentModule, current);
+  letterTemplate = variants[variantIndex];
+  $$('#vocabInput').value = '';
+  const variantsBox = $$('#spellingVariants');
+  variantsBox.innerHTML = variants.length > 1 ? variants.map((variant, index) => '<button type="button" aria-pressed="' + (index === variantIndex) + '" data-variant="' + index + '">写法 ' + (index + 1) + ' · ' + (variant.match(/[a-z0-9]/gi) || []).length + ' 格</button>').join('') : '';
+  variantsBox.querySelectorAll('button').forEach(button => button.addEventListener('click', () => renderLetterInputs(Number(button.dataset.variant))));
+  let index = 0;
+  $$('#letterInputs').className = 'letter-inputs';
+  $$('#letterInputs').innerHTML = letterTemplate.split(' ').map(word => '<span class="letter-word">' + [...word].map(char => /[a-z0-9]/i.test(char)
+    ? '<input class="letter-cell" type="text" maxlength="1" aria-label="第 ' + (++index) + ' 个字母" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="text" />'
+    : '<span class="letter-punctuation">' + escapeHtml(char) + '</span>').join('') + '</span>').join('');
+  $$('#letterHint').textContent = index + ' 个字母格 · 自动跳格，支持粘贴；回车检查';
+  const cells = [...document.querySelectorAll('.letter-cell')];
+  cells.forEach((cell, position) => {
+    cell.addEventListener('focus', () => cell.select());
+    cell.addEventListener('input', event => {
+      if (event.isComposing) return;
+      cell.value = cell.value.normalize('NFKC').replace(/[^a-z0-9]/gi, '').slice(-1);
+      syncLetters();
+      if (cell.value) cells[position + 1]?.focus();
+    });
+    cell.addEventListener('paste', event => {
+      event.preventDefault();
+      const pasted = event.clipboardData.getData('text').normalize('NFKC');
+      const letters = [...pasted.replace(/[^a-z0-9]/gi, '')];
+      if (letters.length > cells.length - position) {
+        $$('#letterHint').textContent = '粘贴内容超出字母格数，请检查拼写或切换写法。';
+        return;
+      }
+      letters.forEach((letter, offset) => { cells[position + offset].value = letter; });
+      syncLetters();
+      cells[Math.min(cells.length - 1, position + letters.length)]?.focus();
+    });
+    cell.addEventListener('keydown', event => {
+      if (event.isComposing) return;
+      if (event.key === 'Enter') { event.preventDefault(); revealVocabAnswer(); }
+      else if (event.key === 'Backspace' && !cell.value && position > 0) { event.preventDefault(); cells[position - 1].value = ''; cells[position - 1].focus(); syncLetters(); }
+      else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); cells[position + (event.key === 'ArrowLeft' ? -1 : 1)]?.focus(); }
+    });
+  });
+  cells[0]?.focus();
+}
+async function rateVocab(rating) {
+  if (!checked || !current || vocabSaving) return;
+  vocabSaving = true;
+  const buttons = [...document.querySelectorAll('[data-vocab-rating], #backButton, #accountButton')];
+  buttons.forEach(button => { button.disabled = true; });
+  $$('#vocabSaveStatus').textContent = '正在保存记忆反馈…';
+  try {
+    const response = await fetch('/api/vocab-progress', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ reviewId: currentReviewId, itemId: current.id, rating }) });
+    const data = await response.json();
+    if (!response.ok) throw Error(data.error || '保存失败');
+    vocabProgress[current.id] = data.card;
+    sessionAnswers.push({ questionId: current.id, correct: currentQuestionCorrect });
+    if (sessionAnswers.length === 20) {
+      await persistCurrentSession();
+      showComplete();
+    } else {
+      // Reorder only the remaining questions: forgot words already in a later
+      // round come forward, remembered words move back. Total stays at 20.
+      const due = word => Date.parse(vocabProgress[word.id]?.dueAt || '') || 0;
+      queue.sort((a, b) => due(a) - due(b));
+      if (queue.length > 1 && queue[0].id === current.id) {
+        const other = queue.findIndex(word => word.id !== current.id);
+        if (other > 0) [queue[0], queue[other]] = [queue[other], queue[0]];
+      }
+      showNext();
+    }
+  } catch (error) {
+    $$('#vocabSaveStatus').textContent = (error.message || '保存失败') + '。请重新点击同一评分重试；本题暂不跳过。';
+    $$('#vocabSaveStatus').className = 'message error';
+  } finally {
+    vocabSaving = false;
+    buttons.forEach(button => { button.disabled = false; });
+  }
+}
+document.querySelectorAll('[data-vocab-rating]').forEach(button => button.addEventListener('click', () => rateVocab(button.dataset.vocabRating)));
+
+$$('#accountButton').addEventListener('click', openAuth); $$('#closeAuthButton').addEventListener('click', closeAuth); $$('#authForm').addEventListener('submit', event => { event.preventDefault(); submitAuth('login'); }); $$('#registerButton').addEventListener('click', () => submitAuth('register')); $$('#logoutButton').addEventListener('click', async () => { await fetch('/api/auth', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'logout' }) }); leaveStudy(); vocabProgress = {}; vocabReady = false; accountUser = null; progress = {}; dailyHistory = {}; totalReviewCount = 0; checkins = []; updateAccountUI(); renderDashboard(); });
+$$('#startVerbButton').addEventListener('click', () => startModule('verb')); $$('#startSchoolButton').addEventListener('click', () => startModule('school')); $$('#startHouhaiButton').addEventListener('click', () => startModule('houhai')); $$('#revealAnswerButton').addEventListener('click', () => currentModule === 'verb' ? revealVerbAnswer() : revealVocabAnswer()); $$('#nextQuestionButton').addEventListener('click', nextQuestion); $$('#card').addEventListener('keydown', event => { if (event.isComposing || event.key !== 'Enter') return; if (event.target.matches('.sentence-input')) { event.preventDefault(); revealVerbAnswer(); } if (event.target.matches('#vocabInput')) { event.preventDefault(); revealVocabAnswer(); } }); document.querySelectorAll('[data-rating]').forEach(button => button.addEventListener('click', () => rateCard(button.dataset.rating))); $$('#studyOrderToggle')?.addEventListener('change', event => setStudyOrder(event.target.checked ? 'random' : 'sequential')); $$('#backButton').addEventListener('click', leaveStudy); $$('#completeBackButton').addEventListener('click', leaveStudy); renderFilters('school'); renderFilters('houhai'); updateStudyOrderUI(); renderDashboard(); loadAuth(); window.addEventListener('resize', () => renderCharts());
 
 globalThis.__englishPractice = { buildVerbQueue, buildVocabQueue, wordsFor, dateRange, studyMetrics, normalizeAnswer: normalization.normalizeAnswer };

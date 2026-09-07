@@ -35,5 +35,35 @@
     return { elapsedSeconds, speed: Math.round((20 * 60 / elapsedSeconds) * 10) / 10, accuracy: Math.round(correctCount / 20 * 100), correctCount };
   }
 
-  return { shuffle, buildVocabQueue, metrics };
+  function lessonKey(word) { return word.unit + '::' + word.lesson; }
+  function selectUnits(source, state, units) {
+    state.units = new Set(units);
+    state.lessons = new Set(source.filter(word => state.units.has(word.unit)).map(lessonKey));
+  }
+  function selectLessons(source, state, all) {
+    state.lessons = new Set(all ? source.filter(word => state.units.has(word.unit)).map(lessonKey) : []);
+  }
+  function scheduledQueue(pool, cards, randomIndex, now = Date.now(), count = 20) {
+    if (!pool.length) return [];
+    const due = [], fresh = [], future = [];
+    for (const word of pool) {
+      const card = cards[word.id];
+      if (!card) fresh.push(word);
+      else if (Date.parse(card.dueAt) <= now) due.push(word);
+      else future.push(word);
+    }
+    const byDue = (a, b) => Date.parse(cards[a.id].dueAt) - Date.parse(cards[b.id].dueAt);
+    due.sort(byDue);
+    future.sort(byDue);
+    const ordered = [...due, ...shuffle(fresh, randomIndex), ...future];
+    const result = [];
+    // Complete a full pass before repeating; failed cards lead each later pass.
+    while (result.length < count) {
+      const round = [...ordered];
+      if (round.length > 1 && result.at(-1)?.id === round[0].id) [round[0], round[1]] = [round[1], round[0]];
+      result.push(...round.slice(0, count - result.length));
+    }
+    return result;
+  }
+  return { shuffle, buildVocabQueue, metrics, lessonKey, selectUnits, selectLessons, scheduledQueue };
 }));

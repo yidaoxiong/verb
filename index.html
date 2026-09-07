@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#5868e8" />
   <title>英语学习宇宙 · Alex Education</title>
-  <link rel="stylesheet" href="styles.css?v=20260901-1" />
+  <link rel="stylesheet" href="styles.css?v=20260906-1" />
 </head>
 <body>
   <main class="shell">
     <header>
       <a class="brand" href="/"><span>V</span><div><small>ALEX EDUCATION · ENGLISH</small><h1>英语学习宇宙</h1></div></a>
-      <div class="header-actions"><span class="version" title="当前版本">v2.0.0</span><button id="accountButton" class="account-button" type="button">登录 / 注册</button></div>
+      <div class="header-actions"><span class="version" title="当前版本">v2.1.0</span><button id="accountButton" class="account-button" type="button">登录 / 注册</button></div>
     </header>
 
     <section id="authPanel" class="panel auth-panel hidden">
@@ -21,7 +21,7 @@
     </section>
 
     <section id="welcomePanel" class="hero panel">
-      <div><p class="eyebrow">VERB · SCHOOL · HOUHAI</p><h2>每天 60 道题，<br />把英语变成稳定的习惯。</h2><p class="hero-copy">动词星球保留 Anki 间隔复习；学校单词和厚海单词按 Unit、Lesson 选择学习。</p><div class="goal-badge"><span>学期打卡目标</span><strong>2026.09.01 — 2027.01.17</strong><small>139 天 · 每天三个模块各 20 题</small></div></div>
+      <div><p class="eyebrow">VERB · SCHOOL · HOUHAI</p><h2>每天 60 道题，<br />把英语变成稳定的习惯。</h2><p class="hero-copy">动词星球保留 Anki 间隔复习；学校单词和厚海单词按 Unit、Lesson 选择，按记忆情况安排复习。</p><div class="goal-badge"><span>学期打卡目标</span><strong>2026.09.01 — 2027.01.17</strong><small>139 天 · 每天三个模块各 20 题</small></div></div>
       <div class="orbit" aria-hidden="true"><div class="planet">go<br /><b>went</b><br />gone</div><i class="star s1">✦</i><i class="star s2">✦</i><i class="star s3">✧</i></div>
     </section>
 
@@ -34,12 +34,12 @@
     <section id="modulePanel" class="module-grid" aria-label="今日学习模块">
       <article class="module-card panel verb-module"><div class="module-icon">V</div><div class="module-copy"><p class="eyebrow">MODULE 01 · ANKI</p><h2>动词星球</h2><p>过去式、过去分词与中文例句。到期优先，四档难度评分。</p><div class="module-meta"><span id="verbTodayStatus">今日未完成</span><span>20 题</span><span id="verbModuleSpeed">—</span></div><label class="order-toggle"><span>学习顺序</span><input id="studyOrderToggle" type="checkbox" role="switch" /><b id="studyOrderHint">按动词星球原表顺序安排 20 张卡</b></label></div><button id="startVerbButton" class="primary module-start" type="button">开始复习 <span>→</span></button></article>
       <article class="module-card panel school-module"><div class="module-icon">S</div><div class="module-copy"><p class="eyebrow">MODULE 02 · SCHOOL</p><h2>学校单词</h2><p>五年级上英语单词，按 Unit 和 Lesson 自由组合。</p><div class="module-meta"><span id="schoolTodayStatus">今日未完成</span><span>20 题</span><span id="schoolModuleSpeed">—</span></div></div><button id="startSchoolButton" class="primary module-start" type="button">开始学习 <span>→</span></button></article>
-      <article class="module-card panel houhai-module"><div class="module-icon">H</div><div class="module-copy"><p class="eyebrow">MODULE 03 · HOUHAI</p><h2>厚海单词</h2><p>四下厚海单词，按 Unit、Lesson 和词汇类别学习。</p><div class="module-meta"><span id="houhaiTodayStatus">今日未完成</span><span>20 题</span><span id="houhaiModuleSpeed">—</span></div></div><button id="startHouhaiButton" class="primary module-start" type="button">开始学习 <span>→</span></button></article>
+      <article class="module-card panel houhai-module"><div class="module-icon">H</div><div class="module-copy"><p class="eyebrow">MODULE 03 · HOUHAI</p><h2>厚海单词</h2><p>四下厚海单词，按 Unit、Lesson 选择，结合记忆反馈复习。</p><div class="module-meta"><span id="houhaiTodayStatus">今日未完成</span><span>20 题</span><span id="houhaiModuleSpeed">—</span></div></div><button id="startHouhaiButton" class="primary module-start" type="button">开始学习 <span>→</span></button></article>
     </section>
 
     <section id="selectionPanel" class="selection-grid">
-      <article id="schoolSelection" class="panel selection-card"><div class="selection-head"><div><p class="eyebrow">学校单词 · 学习范围</p><h3>选择 Unit / Lesson</h3></div><span id="schoolPoolCount" class="pool-count">词池 —</span></div><div class="filter-block"><span>Unit（可多选）</span><div id="schoolUnitFilters" class="check-grid"></div></div><div class="filter-block"><span>Lesson（可多选）</span><div id="schoolLessonFilters" class="check-grid"></div></div><p class="selection-hint">取所选 Unit 与 Lesson 的交集；词池不足 20 个时会分轮补足。</p></article>
-      <article id="houhaiSelection" class="panel selection-card"><div class="selection-head"><div><p class="eyebrow">厚海单词 · 学习范围</p><h3>选择 Unit / Lesson</h3></div><span id="houhaiPoolCount" class="pool-count">词池 —</span></div><div class="filter-block"><span>Unit（可多选）</span><div id="houhaiUnitFilters" class="check-grid"></div></div><div class="filter-block"><span>Lesson（可多选）</span><div id="houhaiLessonFilters" class="check-grid"></div></div><p class="selection-hint">取所选 Unit 与 Lesson 的交集；词池不足 20 个时会分轮补足。</p></article>
+      <article id="schoolSelection" class="panel selection-card"><div class="selection-head"><div><p class="eyebrow">学校单词 · 学习范围</p><h3>选择 Unit / Lesson</h3></div><span id="schoolPoolCount" class="pool-count">词池 —</span></div><div class="filter-block"><span>Unit（可多选）</span><div id="schoolUnitFilters" class="check-grid"></div></div><div class="filter-block"><span>Lesson（可多选）</span><div id="schoolLessonFilters" class="check-grid"></div></div><p class="selection-hint">选择 Unit 后自动勾选对应 Lesson，可再调整。到期词优先；不足 20 个时分轮练习。</p></article>
+      <article id="houhaiSelection" class="panel selection-card"><div class="selection-head"><div><p class="eyebrow">厚海单词 · 学习范围</p><h3>选择 Unit / Lesson</h3></div><span id="houhaiPoolCount" class="pool-count">词池 —</span></div><div class="filter-block"><span>Unit（可多选）</span><div id="houhaiUnitFilters" class="check-grid"></div></div><div class="filter-block"><span>Lesson（可多选）</span><div id="houhaiLessonFilters" class="check-grid"></div></div><p class="selection-hint">选择 Unit 后自动勾选对应 Lesson，可再调整。到期词优先；不足 20 个时分轮练习。</p></article>
     </section>
 
     <section id="analyticsPanel" class="panel analytics">
@@ -53,21 +53,21 @@
     <section id="studyPanel" class="panel study hidden"><div class="study-top"><button id="backButton" class="back" type="button">← 返回学习首页</button><span id="studyCount">今日学习</span><span id="timerText">00:00</span></div><div id="card" class="card">
       <p id="questionLabel" class="eyebrow">根据例句回忆两种变化</p>
       <div id="verbQuestionView"><h2 id="baseWord">go</h2><p id="promptText">在两个空格中输入答案，再点击检查</p><div class="memory-examples"><article><span>过去式例句</span><p id="maskedPastSentence"></p></article><article><span>过去分词例句</span><p id="maskedParticipleSentence"></p></article></div></div>
-      <div id="vocabQuestionView" class="hidden"><div id="frontMetadata" class="metadata-line"></div><h2 id="vocabMeaning"></h2><p id="vocabChineseExample" class="chinese-example"></p><p id="vocabPrompt" class="vocab-prompt">根据中文提示输入英文单词，按回车检查</p><input id="vocabInput" class="vocab-input" autocomplete="off" autocapitalize="none" spellcheck="false" /></div>
+      <div id="vocabQuestionView" class="hidden"><div id="frontMetadata" class="metadata-line"></div><h2 id="vocabMeaning"></h2><p id="vocabChineseExample" class="chinese-example"></p><p id="vocabPrompt" class="vocab-prompt">根据中文提示输入英文单词，按回车检查</p><div id="spellingVariants" class="spelling-variants"></div><div id="letterInputs" class="letter-inputs" role="group" aria-label="逐字母输入单词"></div><input id="vocabInput" type="hidden" /><p id="letterHint" class="hint"></p></div>
       <button id="revealAnswerButton" class="primary reveal-answer" type="button">检查并显示答案</button>
       <div id="answerReveal" class="answer-reveal hidden"><p id="resultText">对照答案和完整例句，再选择这张卡的真实难度。</p>
         <div id="verbAnswerContent"><div class="answer-forms"><div><span>过去式</span><b id="revealPast"></b></div><div><span>过去分词</span><b id="revealParticiple"></b></div></div><div class="meaning-line"><span>单词中文含义</span><b><i id="revealBase"></i> · <i id="revealMeaning"></i></b></div><div class="full-examples"><article><span>过去式完整例句</span><p id="fullPastSentence"></p><p id="pastSentenceMeaning" class="sentence-meaning"></p></article><article><span>过去分词完整例句</span><p id="fullParticipleSentence"></p><p id="participleSentenceMeaning" class="sentence-meaning"></p></article></div><div class="related"><div class="related-title"><span>同类变形</span><small>放在一起对照，更容易记住规律</small></div><div id="relatedList" class="related-list"></div></div><p class="rating-title">这张卡的感觉如何？</p><div id="ratingBlock" class="ratings"><button data-rating="again" class="again" type="button">重来<small>10 分钟</small></button><button data-rating="hard" class="hard" type="button">困难<small>较快复习</small></button><button data-rating="good" class="good" type="button">记住<small>正常间隔</small></button><button data-rating="easy" class="easy" type="button">简单<small>更久以后</small></button></div></div>
-        <div id="vocabAnswerContent" class="hidden"><div id="backMetadata" class="metadata-line"></div><div class="vocab-back"><span>英文单词</span><strong id="vocabWord"></strong><span>音标 · 词性</span><b id="vocabPronunciation"></b><p id="vocabEnglishExample"></p></div><button id="nextQuestionButton" class="primary next-question" type="button">下一题 <span>→</span></button></div>
+        <div id="vocabAnswerContent" class="hidden"><div id="backMetadata" class="metadata-line"></div><div class="vocab-back"><span>英文单词</span><strong id="vocabWord"></strong><span>音标 · 词性</span><b id="vocabPronunciation"></b><p id="vocabEnglishExample"></p></div><p class="rating-title">这个单词记住了吗？</p><div id="vocabRatings" class="ratings"><button type="button" data-vocab-rating="again" class="again">忘记了<small>10 分钟后</small></button><button type="button" data-vocab-rating="hard" class="hard">有点困难<small>较快复习</small></button><button type="button" data-vocab-rating="good" class="good">记住了<small>延长间隔</small></button><button type="button" data-vocab-rating="easy" class="easy">很熟练<small>更久以后</small></button></div><p id="vocabSaveStatus" class="message" role="status"></p><button id="nextQuestionButton" class="primary next-question hidden" type="button">下一题 <span>→</span></button></div>
         <div id="finishMetrics" class="finish-metrics hidden"><div><span>用时</span><strong id="elapsedMetric">—</strong><small>秒</small></div><div><span>速度</span><strong id="speedMetric">—</strong><small>题 / 分</small></div><div><span>正确率</span><strong id="accuracyMetric">—</strong><small>%</small></div></div>
       </div>
     </div><div id="completeState" class="complete hidden"><span>✦</span><h2 id="completeTitle">今天学习完成！</h2><p id="completeSummary">继续保持，记忆会越来越牢。</p><div id="completeMetrics" class="finish-metrics"></div><button id="completeBackButton" class="primary" type="button">返回学习首页</button></div></section>
 
     <section class="how panel"><p class="eyebrow">三个模块 · 每天 60 题</p><h2>看中文，回忆英文；看语境，记住变化。</h2><div><article><b>1</b><p>选择今天要学习的模块，学校和厚海可按 Unit、Lesson 筛选。</p></article><article><b>2</b><p>在正面输入答案，回车或点击检查；背面展示完整词条。</p></article><article><b>3</b><p>每个模块完成 20 题后记录用时、速度和正确率。</p></article></div></section>
   </main>
-  <script src="data/answer-normalization.js?v=20260901-1"></script>
-  <script src="data/practice-logic.js?v=20260901-1"></script>
-  <script src="data/school-words.js?v=20260901-1"></script>
-  <script src="data/houhai-words.js?v=20260901-1"></script>
-  <script src="app.js?v=20260901-1"></script>
+  <script src="data/answer-normalization.js?v=20260906-1"></script>
+  <script src="data/practice-logic.js?v=20260906-1"></script>
+  <script src="data/school-words.js?v=20260906-1"></script>
+  <script src="data/houhai-words.js?v=20260906-1"></script>
+  <script src="app.js?v=20260906-1"></script>
 </body>
 </html>
