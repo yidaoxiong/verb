@@ -290,3 +290,51 @@ body { font-size:16px; }
   .letter-word { gap:4px; }
   .analytics { padding:22px 16px; }
 }
+
+/* v2.2.0: confirmation input and per-session practice detail */
+.history-table td { vertical-align:top; }
+.history-session { display:grid; gap:3px; margin:0 0 8px; padding:8px; border:1px solid #e4e8f3; border-radius:10px; background:#fbfcff; color:#53627d; text-align:left; }
+.history-session:last-child { margin-bottom:0; }
+.history-session strong { color:#4858b9; font-size:14px; line-height:1.5; }
+.history-session small { color:#6d7a91; font-size:12px; line-height:1.5; }
+.history-session details { margin-top:2px; }
+.history-session summary { cursor:pointer; color:#596985; font-size:12px; font-weight:800; }
+.history-questions { display:grid; gap:3px; margin-top:6px; color:#71809b; font-size:12px; line-height:1.5; }
+.history-questions span { overflow-wrap:anywhere; }
+.history-questions .is-correct { color:#2d9978; }
+.history-questions .is-wrong { color:#d56572; }
+.second-check { margin:18px 0 22px; padding:17px; border:1px solid #dfe4f6; border-radius:16px; background:#f9faff; text-align:center; }
+.second-check .rating-title { margin:0 0 5px; color:#4e5fc6; }
+.second-check .vocab-prompt { margin:0 0 12px; }
+.second-answer { min-width:190px; margin-top:14px; }
+.study { position:relative; overflow:hidden; }
+.study-top { position:relative; z-index:10; align-items:center; }
+.handwriting-overlay { position:absolute; inset:0; z-index:3; display:block; width:100%; height:100%; border:0; outline:0; background:transparent; pointer-events:none; touch-action:auto; }
+.study-ink-tools { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:6px; margin-left:auto; color:#74819a; font-size:12px; font-weight:800; }
+.study-ink-tools button { min-width:52px; padding:6px 9px; font-size:12px; }
+.study-ink-tools span:last-child { max-width:220px; color:#77849a; font-size:11px; font-weight:700; line-height:1.4; }
+.self-assessment { margin:18px 0 22px; padding:15px; border:1px solid #f0dfbd; border-radius:16px; background:#fffaf1; text-align:center; }
+.self-assessment .rating-title { margin:0 0 10px; color:#8a672d; }
+.self-assessment>div { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
+.self-assessment button { min-height:48px; border:0; border-radius:11px; font-weight:900; }
+.self-assessment .message { min-height:1.4em; margin:9px 0 0; }
+.sentence-card-inputs { display:grid; gap:12px; margin:16px auto 10px; text-align:left; }
+.sentence-card-row { display:grid; gap:6px; }
+.sentence-card-row label { color:#596982; font-size:14px; line-height:1.5; }
+.sentence-card-input { width:100%; margin:0; padding:11px 12px; border:1px solid #c5ceed; border-bottom:3px solid #6878df; border-radius:8px; background:#f4f6ff; color:#273870; font:700 16px Nunito,'Noto Sans SC',sans-serif; }
+.sentence-card-input:disabled { opacity:1; -webkit-text-fill-color:currentColor; }
+.sentence-card-input.correct { border-color:#29976a; background:#e8f8ef; }
+.sentence-card-input.incorrect { border-color:#ce6570; background:#fff0f2; }
+.sentence-back { display:grid; gap:7px; margin:10px 0 17px; padding:17px; border:1px solid #dceee8; border-radius:17px; background:#f5fcf9; text-align:left; }
+.sentence-back>span { color:#32866d; font-size:14px; font-weight:900; }
+.sentence-answer { display:grid; gap:4px; padding:9px 0; border-top:1px dashed #cfe4dc; }
+.sentence-answer:first-child { border-top:0; }
+.sentence-answer span { color:#62726d; font-size:13px; line-height:1.5; }
+.sentence-answer strong { color:#167456; font-size:17px; line-height:1.55; }
+@media(max-width:600px) {
+  .history-session strong { font-size:13px; }
+  .history-session small,.history-session summary,.history-questions { font-size:11px; }
+  .sentence-card-input { font-size:15px; }
+  .study-ink-tools { flex-basis:100%; justify-content:flex-start; margin-left:0; }
+  .study-ink-tools span:last-child { max-width:none; }
+}

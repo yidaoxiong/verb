@@ -1,0 +1,294 @@
+[
+  {
+    "id": "school:174",
+    "sourceIndex": 174,
+    "word": "famous",
+    "answer": "famous",
+    "answerVariants": ["famous"],
+    "pronunciation": "/ˈfeɪməs/",
+    "partOfSpeech": "adj.",
+    "meaning": "著名的",
+    "englishExample": "Animal World is a famous TV programme.",
+    "chineseExample": "《动物世界》是一个著名的电视节目。",
+    "unit": "Unit One",
+    "topic": "My Favourite Things",
+    "lesson": "基础练习",
+    "lessonTitle": "Unit One · 单词句式基础练习",
+    "source": {
+      "来源": "Unit 1 单词句式基础练习(1).pdf",
+      "页码": 1,
+      "中文": "著名的",
+      "英文": "famous"
+    }
+  },
+  {
+    "id": "school:175",
+    "sourceIndex": 175,
+    "word": "better",
+    "answer": "better",
+    "answerVariants": ["better"],
+    "pronunciation": "/ˈbetə(r)/",
+    "partOfSpeech": "adj./adv.",
+    "meaning": "更好的",
+    "englishExample": "Which one do you like better?",
+    "chineseExample": "你更喜欢哪一个？",
+    "unit": "Unit One",
+    "topic": "My Favourite Things",
+    "lesson": "基础练习",
+    "lessonTitle": "Unit One · 单词句式基础练习",
+    "source": {
+      "来源": "Unit 1 单词句式基础练习(1).pdf",
+      "页码": 1,
+      "中文": "更好的",
+      "英文": "better"
+    }
+  },
+  {
+    "id": "school:176",
+    "sourceIndex": 176,
+    "word": "hobby",
+    "answer": "hobby",
+    "answerVariants": ["hobby"],
+    "pronunciation": "/ˈhɒbi/",
+    "partOfSpeech": "n.",
+    "meaning": "爱好",
+    "englishExample": "Watching films is my hobby.",
+    "chineseExample": "看电影是我的爱好。",
+    "unit": "Unit One",
+    "topic": "My Favourite Things",
+    "lesson": "基础练习",
+    "lessonTitle": "Unit One · 单词句式基础练习",
+    "source": {
+      "来源": "Unit 1 单词句式基础练习(1).pdf",
+      "页码": 1,
+      "中文": "爱好",
+      "英文": "hobby"
+    }
+  },
+  {
+    "id": "school:177",
+    "sourceIndex": 177,
+    "word": "travel",
+    "answer": "travel",
+    "answerVariants": ["travel"],
+    "pronunciation": "/ˈtrævl/",
+    "partOfSpeech": "v.",
+    "meaning": "旅行，旅游",
+    "englishExample": "I like to travel with my family.",
+    "chineseExample": "我喜欢和家人一起旅行。",
+    "unit": "Unit One",
+    "topic": "My Favourite Things",
+    "lesson": "基础练习",
+    "lessonTitle": "Unit One · 单词句式基础练习",
+    "source": {
+      "来源": "Unit 1 单词句式基础练习(1).pdf",
+      "页码": 1,
+      "中文": "旅行,旅游（v.）",
+      "英文": "travel"
+    }
+  },
+  {
+    "id": "school:178",
+    "sourceIndex": 178,
+    "word": "good idea",
+    "answer": "good idea",
+    "answerVariants": ["good idea"],
+    "pronunciation": "—",
+    "partOfSpeech": "词组",
+    "meaning": "好主意",
+    "englishExample": "That is a good idea.",
+    "chineseExample": "那是一个好主意。",
+    "unit": "Unit One",
+    "topic": "My Favourite Things",
+    "lesson": "基础练习",
+    "lessonTitle": "Unit One · 单词句式基础练习",
+    "source": {
+      "来源": "Unit 1 单词句式基础练习(1).pdf",
+      "页码": 1,
+      "中文": "好主意",
+      "英文": "good idea"
+    }
+  },
+  {
+    "id": "school:179",
+    "sourceIndex": 179,
+    "word": "watch films",
+    "answer": "watch films",
+    "answerVariants": ["watch films"],
+    "pronunciation": "—",
+    "partOfSpeech": "词组",
+    "meaning": "看电影",
+    "englishExample": "I like to watch films at weekends.",
+    "chineseExample": "我喜欢周末看电影。",
+    "unit": "Unit One",
+    "topic": "My Favourite Things",
+    "lesson": "基础练习",
+    "lessonTitle": "Unit One · 单词句式基础练习",
+    "source": {
+      "来源": "Unit 1 单词句式基础练习(1).pdf",
+      "页码": 1,
+      "中文": "看电影",
+      "英文": "watch films"
+    }
+  },
+  {
+    "id": "school:180",
+    "sourceIndex": 180,
+    "word": "folk dance",
+    "answer": "folk dance",
+    "answerVariants": ["folk dance"],
+    "pronunciation": "—",
+    "partOfSpeech": "词组",
+    "meaning": "民族舞",
+    "englishExample": "I like folk dance best.",
+    "chineseExample": "我最喜欢民族舞。",
+    "unit": "Unit One",
+    "topic": "My Favourite Things",
+    "lesson": "基础练习",
+    "lessonTitle": "Unit One · 单词句式基础练习",
+    "source": {
+      "来源": "Unit 1 单词句式基础练习(1).pdf",
+      "页码": 1,
+      "中文": "民族舞",
+      "英文": "folk dance"
+    }
+  },
+  {
+    "id": "school:181",
+    "sourceIndex": 181,
+    "cardType": "sentence",
+    "word": "Which one do you like better?",
+    "answer": "Which one do you like better?",
+    "answerVariants": ["Which one do you like better?", "I like Animal World better because it’s interesting."],
+    "pronunciation": "—",
+    "partOfSpeech": "句式",
+    "meaning": "你更喜欢哪一个？我更喜欢《动物世界》，因为它很有趣。",
+    "englishExample": "Which one do you like better? I like Animal World better because it’s interesting.",
+    "chineseExample": "你更喜欢哪一个？我更喜欢《动物世界》，因为它很有趣。",
+    "unit": "Unit One",
+    "topic": "My Favourite Things",
+    "lesson": "基础练习",
+    "lessonTitle": "Unit One · 单词句式基础练习",
+    "sentenceParts": [
+      {"prompt": "你更喜欢哪一个？", "answers": ["Which one do you like better?"]},
+      {"prompt": "我更喜欢《动物世界》，因为它很有趣。", "answers": ["I like Animal World better because it’s interesting."]}
+    ],
+    "source": {
+      "来源": "Unit 1 单词句式基础练习(1).pdf",
+      "页码": 1,
+      "题号": 1,
+      "中文": "你更喜欢哪一个？我更喜欢《动物世界》，因为它很有趣。",
+      "英文": ["Which one do you like better?", "I like Animal World better because it’s interesting."]
+    }
+  },
+  {
+    "id": "school:182",
+    "sourceIndex": 182,
+    "cardType": "sentence",
+    "word": "Which subject do you like best?",
+    "answer": "Which subject do you like best?",
+    "answerVariants": ["Which subject do you like best?", "I like Chinese best."],
+    "pronunciation": "—",
+    "partOfSpeech": "句式",
+    "meaning": "你最喜欢哪一科？我最喜欢语文。",
+    "englishExample": "Which subject do you like best? I like Chinese best.",
+    "chineseExample": "你最喜欢哪一科？我最喜欢语文。",
+    "unit": "Unit One",
+    "topic": "My Favourite Things",
+    "lesson": "基础练习",
+    "lessonTitle": "Unit One · 单词句式基础练习",
+    "sentenceParts": [
+      {"prompt": "你最喜欢哪一科？", "answers": ["Which subject do you like best?"]},
+      {"prompt": "我最喜欢语文。", "answers": ["I like Chinese best."]}
+    ],
+    "source": {
+      "来源": "Unit 1 单词句式基础练习(1).pdf",
+      "页码": 1,
+      "题号": 2,
+      "中文": "你最喜欢哪一科？我最喜欢语文。",
+      "英文": ["Which subject do you like best?", "I like Chinese best."]
+    }
+  },
+  {
+    "id": "school:183",
+    "sourceIndex": 183,
+    "cardType": "sentence",
+    "word": "Which subject do you do best in?",
+    "answer": "Which subject do you do best in?",
+    "answerVariants": ["Which subject do you do best in?", "I do best in English."],
+    "pronunciation": "—",
+    "partOfSpeech": "句式",
+    "meaning": "你最擅长哪一科？我最擅长英语。",
+    "englishExample": "Which subject do you do best in? I do best in English.",
+    "chineseExample": "你最擅长哪一科？我最擅长英语。",
+    "unit": "Unit One",
+    "topic": "My Favourite Things",
+    "lesson": "基础练习",
+    "lessonTitle": "Unit One · 单词句式基础练习",
+    "sentenceParts": [
+      {"prompt": "你最擅长哪一科？", "answers": ["Which subject do you do best in?"]},
+      {"prompt": "我最擅长英语。", "answers": ["I do best in English."]}
+    ],
+    "source": {
+      "来源": "Unit 1 单词句式基础练习(1).pdf",
+      "页码": 1,
+      "题号": 3,
+      "中文": "你最擅长哪一科？我最擅长英语。",
+      "英文": ["Which subject do you do best in?", "I do best in English."]
+    }
+  },
+  {
+    "id": "school:184",
+    "sourceIndex": 184,
+    "cardType": "sentence",
+    "word": "I like to travel.",
+    "answer": "I like to travel.",
+    "answerVariants": ["I like to travel.", "I like travelling."],
+    "pronunciation": "—",
+    "partOfSpeech": "句式",
+    "meaning": "我喜欢旅行。",
+    "englishExample": "I like to travel. / I like travelling.",
+    "chineseExample": "我喜欢旅行。",
+    "unit": "Unit One",
+    "topic": "My Favourite Things",
+    "lesson": "基础练习",
+    "lessonTitle": "Unit One · 单词句式基础练习",
+    "sentenceParts": [
+      {"prompt": "我喜欢旅行。", "answers": ["I like to travel.", "I like travelling."]}
+    ],
+    "source": {
+      "来源": "Unit 1 单词句式基础练习(1).pdf",
+      "页码": 1,
+      "题号": 4,
+      "中文": "我喜欢旅行。",
+      "英文": ["I like to travel.", "I like travelling."]
+    }
+  },
+  {
+    "id": "school:185",
+    "sourceIndex": 185,
+    "cardType": "sentence",
+    "word": "I like folk dance best.",
+    "answer": "I like folk dance best.",
+    "answerVariants": ["I like folk dance best."],
+    "pronunciation": "—",
+    "partOfSpeech": "句式",
+    "meaning": "我最喜欢民族舞。",
+    "englishExample": "I like folk dance best.",
+    "chineseExample": "我最喜欢民族舞。",
+    "unit": "Unit One",
+    "topic": "My Favourite Things",
+    "lesson": "基础练习",
+    "lessonTitle": "Unit One · 单词句式基础练习",
+    "sentenceParts": [
+      {"prompt": "我最喜欢民族舞。", "answers": ["I like folk dance best."]}
+    ],
+    "source": {
+      "来源": "Unit 1 单词句式基础练习(1).pdf",
+      "页码": 1,
+      "题号": 5,
+      "中文": "我最喜欢民族舞。",
+      "英文": ["I like folk dance best."]
+    }
+  }
+]

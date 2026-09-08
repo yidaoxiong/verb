@@ -45,7 +45,7 @@ export async function runTests() {
   const get = user => onRequestGet({ env: { DB: db }, request: new Request('https://test/api/vocab-progress', { headers: user ? { Cookie: 'slashbro_session=' + user } : {} }) });
   assert.equal((await get()).status, 401);
   const event = { reviewId: crypto.randomUUID(), itemId: 'school:1', rating: 'again' };
-  assert.equal((await post({ ...event, itemId: 'school:174' })).status, 400);
+  assert.equal((await post({ ...event, itemId: 'school:186' })).status, 400);
   const first = await (await post(event)).json();
   assert.equal(first.card.intervalDays, 0);
   assert(Math.abs(Date.parse(first.card.dueAt) - Date.now() - 600000) < 3000);
@@ -60,7 +60,7 @@ export async function runTests() {
 
   const state = { units: new Set(), lessons: new Set() };
   logic.selectUnits(school, state, ['Unit One']);
-  assert.deepEqual([...state.lessons], ['Unit One::Lesson 1', 'Unit One::Lesson 2', 'Unit One::Lesson 3', 'Unit One::Lesson 4']);
+  assert.deepEqual([...state.lessons], ['Unit One::Lesson 1', 'Unit One::Lesson 2', 'Unit One::Lesson 3', 'Unit One::Lesson 4', 'Unit One::基础练习']);
   logic.selectUnits(school, state, ['Unit Two']);
   assert([...state.lessons].every(key => key.startsWith('Unit Two::')));
   logic.selectUnits(houhai, state, ['Unit 7', 'Unit 8']);

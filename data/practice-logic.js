@@ -36,6 +36,16 @@
   }
 
   function lessonKey(word) { return word.unit + '::' + word.lesson; }
+  function isVocabModule(module) { return module === 'school' || module === 'houhai'; }
+  function isSentenceCard(entry) { return entry?.cardType === 'sentence' || Array.isArray(entry?.sentenceParts); }
+  function sentenceParts(entry) {
+    if (isSentenceCard(entry) && Array.isArray(entry.sentenceParts)) return entry.sentenceParts;
+    return [{ prompt: entry?.chineseExample || '', answers: Array.isArray(entry?.answerVariants) ? entry.answerVariants : [entry?.answer || entry?.word || ''] }];
+  }
+  function requiresSecondInput(module) { return isVocabModule(module); }
+  function canRateVocabulary(module, firstSubmitted, secondSubmitted) {
+    return Boolean(firstSubmitted) && (!requiresSecondInput(module) || Boolean(secondSubmitted));
+  }
   function selectUnits(source, state, units) {
     state.units = new Set(units);
     state.lessons = new Set(source.filter(word => state.units.has(word.unit)).map(lessonKey));
@@ -65,5 +75,5 @@
     }
     return result;
   }
-  return { shuffle, buildVocabQueue, metrics, lessonKey, selectUnits, selectLessons, scheduledQueue };
+  return { shuffle, buildVocabQueue, metrics, lessonKey, selectUnits, selectLessons, scheduledQueue, isVocabModule, isSentenceCard, sentenceParts, requiresSecondInput, canRateVocabulary };
 }));

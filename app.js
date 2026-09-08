@@ -498,7 +498,7 @@ const similarFamilies = [
   ['weave','freeze'],
   ['win','spin']
 ];
-// v2.1.0 learning application. Verb content and its progress API stay compatible.
+// v2.2.0 learning application. Verb content and its progress API stay compatible.
 const $$ = selector => document.querySelector(selector);
 const normalization = globalThis.AnswerNormalization || { normalizeAnswer: value => String(value ?? '').trim().toLowerCase(), matches: (_module, entry, value) => String(entry?.answer || entry?.word || '').toLowerCase() === String(value || '').trim().toLowerCase() };
 const practiceLogic = globalThis.PracticeLogic || { buildVocabQueue: pool => [...pool].slice(0, 20), metrics: (startedAt, completedAt, correctCount) => { const elapsedSeconds = Math.max(1, Math.round((completedAt - startedAt) / 1000)); return { elapsedSeconds, speed: Math.round((20 * 60 / elapsedSeconds) * 10) / 10, accuracy: Math.round(correctCount / 20 * 100), correctCount }; } };
@@ -518,21 +518,29 @@ let checkins = [];
 let queue = [];
 let current = null;
 let checked = false;
+let secondAnswerSubmitted = false;
 let currentModule = '';
 let currentQuestionCorrect = false;
+let secondQuestionCorrect = false;
 let currentQuestionNumber = 0;
 let sessionStartedAt = 0;
 let sessionCompletedAt = 0;
 let sessionId = '';
 let sessionAnswers = [];
+let sessionScopes = [];
 let sessionMetrics = null;
 let sessionSaved = false;
-let vocabProgress = {}, vocabReady = false, vocabSaving = false, currentReviewId = '', letterTemplate = '';
+let vocabProgress = {}, vocabReady = false, vocabSaving = false, currentReviewId = '', letterTemplate = '', secondLetterTemplate = '';
+let firstAnswerSource = '';
+let handwritingFirstSelfAssessment = null;
+const handwritingLogic = globalThis.HandwritingLogic || { createBoard: () => ({ strokes: [], active: null }), hasInk: board => Boolean(board?.strokes?.some(stroke => stroke.length)), clear: board => { board.strokes = []; board.active = null; }, undo: board => { if (!board.strokes.length) return false; board.strokes.pop(); return true; }, canvasSize: (width, height, ratio = 1) => ({ width: Math.max(1, Math.round(Number(width) || 0)), height: Math.max(1, Math.round(Number(height) || 0)), ratio: Math.max(1, Math.min(4, Number(ratio) || 1)), pixelWidth: Math.max(1, Math.round(Number(width) || 0)) * Math.max(1, Math.min(4, Number(ratio) || 1)), pixelHeight: Math.max(1, Math.round(Number(height) || 0)) * Math.max(1, Math.min(4, Number(ratio) || 1)) }), canWrite: (stage, state = {}) => stage === 'first' ? !state.checked : state.checked && state.selfAssessment !== null && !state.submitted };
+const handwritingBoards = { first: { ...handwritingLogic.createBoard(), canvas: null, canvases: [] }, second: { ...handwritingLogic.createBoard(), canvas: null, canvases: [] } };
 let studyOrder = localStorage.getItem('verb-study-order') === 'random' ? 'random' : 'sequential';
 const selectionState = {
   school: { units: new Set(schoolWords.map(word => word.unit)), lessons: new Set(schoolWords.map(practiceLogic.lessonKey)) },
   houhai: { units: new Set(houhaiWords.map(word => word.unit)), lessons: new Set(houhaiWords.map(practiceLogic.lessonKey)) },
 };
+const vocabEntriesById = new Map([...schoolWords, ...houhaiWords].map(entry => [entry.id, entry]));
 
 const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
 const firstForm = value => String(value || '').split('/')[0];
@@ -596,6 +604,51 @@ function dueTime(verb) { const card = progress[verb.base]; if (!card) return 0; 
 function buildVerbQueue() { const now = Date.now(); const indexed = verbs.map((verb, index) => ({ ...verb, sourceIndex: index + 1 })); const due = indexed.filter(verb => !progress[verb.base] || dueTime(verb) <= now).sort((left, right) => dueTime(left) - dueTime(right) || left.sourceIndex - right.sourceIndex); const future = indexed.filter(verb => progress[verb.base] && dueTime(verb) > now).sort((left, right) => dueTime(left) - dueTime(right) || left.sourceIndex - right.sourceIndex); const selected = [...due, ...future].slice(0, 20); if (studyOrder === 'random') return shuffle(selected); return selected; }
 function wordsFor(module) { const source = module === 'school' ? schoolWords : houhaiWords; const state = selectionState[module]; return source.filter(word => state.units.has(word.unit) && state.lessons.has(practiceLogic.lessonKey(word))); }
 function buildVocabQueue(module) { return practiceLogic.scheduledQueue(wordsFor(module), vocabProgress, randomIndex); }
+function scopeKey(scope) { return `${scope.unit}\u0000${scope.lesson}`; }
+function entryScope(entry) { return entry?.unit && entry?.lesson ? { unit: entry.unit, lesson: entry.lesson } : null; }
+function scopesForEntries(entries) {
+  const result = [];
+  const seen = new Set();
+  for (const entry of entries || []) {
+    const scope = entryScope(entry);
+    if (!scope || seen.has(scopeKey(scope))) continue;
+    seen.add(scopeKey(scope));
+    result.push(scope);
+  }
+  return result;
+}
+function sessionQuestions(session) { return Array.isArray(session?.questions) ? session.questions : []; }
+function sessionScopesForDisplay(session) {
+  if (session?.module === 'verb') return [{ unit: '动词星球', lesson: '固定题库' }];
+  const stored = Array.isArray(session?.scopes) ? session.scopes.filter(scope => scope?.unit && scope?.lesson) : [];
+  const questions = sessionQuestions(session);
+  const inferred = scopesForEntries(questions.map(question => vocabEntriesById.get(question.questionId)).filter(Boolean));
+  const unknown = questions.some(question => !vocabEntriesById.has(question.questionId));
+  const scopes = stored.length ? stored : inferred;
+  if (unknown && !scopes.some(scope => scope.lesson === '范围不可识别')) scopes.push({ unit: '旧记录', lesson: '含未知题目' });
+  return scopes.length ? scopes : [{ unit: '旧记录', lesson: '范围不可识别' }];
+}
+function scopeLabel(session) { return sessionScopesForDisplay(session).map(scope => `${scope.unit} · ${scope.lesson}`).join('、'); }
+function questionLabel(question) {
+  if (String(question?.questionId || '').startsWith('verb:')) return `${String(question.questionId).slice(5)} · 动词星球`;
+  const entry = vocabEntriesById.get(question?.questionId);
+  if (!entry) return `${question?.questionId || '未知题目'}（范围不可识别）`;
+  const text = entry.cardType === 'sentence' ? '句式卡' : entry.word;
+  return `${text} · ${entry.unit} · ${entry.lesson}`;
+}
+function moduleSessions(date, module) {
+  return checkins.filter(item => item.studyDate === date && item.module === module)
+    .sort((left, right) => String(left.completedAt).localeCompare(String(right.completedAt)));
+}
+function sessionTime(session) {
+  const stamp = new Date(session.completedAt);
+  return Number.isFinite(stamp.getTime()) ? stamp.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '时间未知';
+}
+function renderHistorySession(session) {
+  const questions = sessionQuestions(session);
+  const questionDetail = questions.length ? `<details><summary>查看 ${questions.length} 题记录</summary><div class="history-questions">${questions.map(question => `<span class="${question.correct ? 'is-correct' : 'is-wrong'}">${question.questionIndex}. ${escapeHtml(questionLabel(question))} ${question.correct ? '✓' : '×'}</span>`).join('')}</div></details>` : '';
+  return `<article class="history-session"><strong>${escapeHtml(sessionTime(session))} · ${escapeHtml(scopeLabel(session))}</strong><small>${Number(session.questionCount || 20)} 题 · 正确率 ${Number(session.accuracy)}% · ${Number(session.speed).toFixed(1)} 题/分</small>${questionDetail}</article>`;
+}
 
 function metadataHtml(entry, module, compact = false) { const first = `${entry.unit} · ${entry.lesson}`; const third = module === 'school' ? entry.lessonTitle : entry.category; return `<span>${escapeHtml(first)}</span><span>${escapeHtml(compact ? third : entry.topic)}</span>${!compact && third ? `<span>${escapeHtml(third)}</span>` : ''}`; }
 function renderFilters(module) {
@@ -639,7 +692,7 @@ function currentGoalStreak() { const dates = dateRange(GOAL_START, GOAL_END); co
 function renderGoal() { const today = studyDateForSession(); const completed = dayModuleCount(today); const dates = dateRange(GOAL_START, GOAL_END); const completedDays = dates.filter(date => dayModuleCount(date) === 3).length; const remaining = localDate() < GOAL_START ? GOAL_DAYS : localDate() > GOAL_END ? 0 : dates.filter(date => date >= localDate()).length; $$('#todayGoalCount').textContent = accountUser ? `${completed} / 3` : '— / 3'; $$('#todayGoalStatus').textContent = accountUser && completed === 3 ? '今日已完成' : '今日完成模块'; $$('#goalProgressBar').style.width = accountUser ? `${completed / 3 * 100}%` : '0%'; $$('#goalStreak').textContent = accountUser ? currentGoalStreak() : '—'; $$('#goalCompletedDays').textContent = accountUser ? completedDays : '—'; $$('#goalRemainingDays').textContent = remaining; }
 function renderModuleStatuses() { for (const module of DAILY_MODULES) { const session = latestSession(studyDateForSession(), module); const status = $$(`#${module}TodayStatus`); const speed = $$(`#${module}ModuleSpeed`); if (status) status.textContent = accountUser && session ? '今日已完成' : '今日未完成'; if (speed) speed.textContent = accountUser && session ? `${Number(session.speed).toFixed(1)} 题/分` : '—'; } }
 function recentRows() { return Array.from({ length: 7 }, (_, index) => localDate(6 - index)); }
-function renderHistory() { const rows = recentRows(); $$('#historyRows').innerHTML = rows.map(date => { const cells = DAILY_MODULES.map(module => { const session = latestSession(date, module); return `<td class="${session ? 'status-done' : ''}">${session ? `✓ ${session.accuracy}%<small>${Number(session.speed).toFixed(1)} 题/分</small>` : '—'}</td>`; }).join(''); const count = DAILY_MODULES.filter(module => moduleDone(date, module)).length; return `<tr><th>${dayLabel(date)}</th>${cells}<td>${count} / 3</td></tr>`; }).join(''); }
+function renderHistory() { const rows = recentRows(); $$('#historyRows').innerHTML = rows.map(date => { const cells = DAILY_MODULES.map(module => { const sessions = moduleSessions(date, module); return `<td class="${sessions.length ? 'status-done' : ''}">${sessions.length ? sessions.map(renderHistorySession).join('') : '—'}</td>`; }).join(''); const count = DAILY_MODULES.filter(module => moduleDone(date, module)).length; return `<tr><th>${dayLabel(date)}</th>${cells}<td>${count} / 3</td></tr>`; }).join(''); }
 function renderCalendar() { const dates = dateRange(GOAL_START, GOAL_END); $$('#calendarLoadedStatus').textContent = accountUser ? `${checkins.length} 条 session` : '登录后查看'; $$('#checkinCalendar').innerHTML = dates.map(date => { const count = dayModuleCount(date); const today = date === localDate(); const status = !accountUser ? 'locked' : count === 3 ? 'done' : today ? 'today' : date < localDate() ? 'missed' : 'upcoming'; const modules = DAILY_MODULES.map(module => { const session = latestSession(date, module); return `<span class="calendar-module ${session ? 'is-done' : ''}" title="${MODULE_LABELS[module]}">${module === 'verb' ? 'V' : module === 'school' ? 'S' : 'H'}${session ? '✓' : '·'}</span>`; }).join(''); const records = checkins.filter(item => item.studyDate === date).length; return `<article class="calendar-day ${status}"><span>${date.slice(5).replace('-', '/')}</span><b>${accountUser ? `${count}/3` : '—'}</b><div>${modules}</div><small>${accountUser ? (records ? `${records} 次` : '未打卡') : '登录查看'}</small></article>`; }).join(''); }
 
 function drawLineChart(canvas, items, field, color, maxOverride = null) { if (!canvas) return; const box = canvas.getBoundingClientRect(); const width = Math.max(280, Math.round(box.width || canvas.parentElement?.clientWidth || 600)); const height = 220; const ratio = globalThis.devicePixelRatio || 1; canvas.width = width * ratio; canvas.height = height * ratio; const context = canvas.getContext('2d'); context.setTransform(ratio, 0, 0, ratio, 0, 0); context.clearRect(0, 0, width, height); const left = 38; const right = 12; const top = 18; const bottom = 34; const innerWidth = width - left - right; const innerHeight = height - top - bottom; const values = items.map(item => Number(item[field]) || 0); const max = maxOverride || Math.max(1, ...values) * 1.15; const min = field === 'accuracy' ? 0 : 0; context.font = '10px DM Mono, monospace'; context.strokeStyle = '#e9edf6'; context.fillStyle = '#8290a7'; context.lineWidth = 1; for (let tick = 0; tick <= 4; tick += 1) { const y = top + innerHeight - innerHeight * tick / 4; context.beginPath(); context.moveTo(left, y); context.lineTo(width - right, y); context.stroke(); const label = field === 'accuracy' ? `${Math.round(max * tick / 4)}%` : `${(max * tick / 4).toFixed(1)}`; context.fillText(label, 3, y + 3); } if (!items.length) return; const point = (index, value) => ({ x: items.length === 1 ? left + innerWidth / 2 : left + innerWidth * index / (items.length - 1), y: top + innerHeight - (value - min) / (max - min || 1) * innerHeight }); context.strokeStyle = color; context.fillStyle = color; context.lineWidth = 2.5; context.beginPath(); items.forEach((item, index) => { const target = point(index, Number(item[field]) || 0); if (index === 0) context.moveTo(target.x, target.y); else context.lineTo(target.x, target.y); }); context.stroke(); items.forEach((item, index) => { const target = point(index, Number(item[field]) || 0); context.beginPath(); context.arc(target.x, target.y, 3.5, 0, Math.PI * 2); context.fill(); }); context.fillStyle = '#8290a7'; context.font = '10px Nunito, sans-serif'; const labelIndexes = [...new Set([0, Math.floor((items.length - 1) / 2), items.length - 1])]; labelIndexes.forEach(index => { const target = point(index, Number(items[index][field]) || 0); const label = String(items[index].studyDate || '').slice(5); context.fillText(label, Math.max(left, Math.min(target.x - 17, width - right - 36)), height - 10); }); }
@@ -649,11 +702,27 @@ function renderDashboard() { renderGoal(); renderModuleStatuses(); renderHistory
 function retryStorageKey() { return `${RETRY_KEY}:${accountUser?.id || 'anonymous'}`; }
 function getRetryQueue() { try { const parsed = JSON.parse(localStorage.getItem(retryStorageKey()) || '[]'); return Array.isArray(parsed) ? parsed : []; } catch { return []; } }
 function setRetryQueue(items) { try { localStorage.setItem(retryStorageKey(), JSON.stringify(items.slice(-50))); } catch { /* private browsing can reject storage */ } }
-function compactCheckinPayload(payload) { return { sessionId: payload.sessionId, module: payload.module, studyDate: payload.studyDate, startedAt: payload.startedAt, completedAt: payload.completedAt, elapsedSeconds: payload.elapsedSeconds, answers: payload.answers.map(answer => ({ questionId: String(answer.questionId), correct: Boolean(answer.correct) })) }; }
+function compactCheckinPayload(payload) { const compact = { sessionId: payload.sessionId, module: payload.module, studyDate: payload.studyDate, startedAt: payload.startedAt, completedAt: payload.completedAt, elapsedSeconds: payload.elapsedSeconds, answers: payload.answers.map(answer => ({ questionId: String(answer.questionId), correct: Boolean(answer.correct) })) }; if (Array.isArray(payload.scopes) && payload.scopes.length) compact.scopes = payload.scopes.map(scope => ({ unit: String(scope.unit), lesson: String(scope.lesson) })); return compact; }
 async function postCheckin(payload) { const response = await fetch('/api/checkins', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(compactCheckinPayload(payload)) }); const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.error || '打卡记录保存失败。'); return data.session; }
 async function flushRetryQueue() { if (!accountUser) return; const pending = getRetryQueue(); const remaining = []; for (const payload of pending) { try { const saved = await postCheckin(payload); if (saved) checkins = [...checkins.filter(item => item.sessionId !== saved.sessionId), saved]; } catch { remaining.push(payload); } } setRetryQueue(remaining); renderDashboard(); }
 async function saveSession(payload) { try { const saved = await postCheckin(payload); if (saved) checkins = [...checkins.filter(item => item.sessionId !== saved.sessionId), saved]; setRetryQueue(getRetryQueue().filter(item => item.sessionId !== payload.sessionId)); renderDashboard(); return true; } catch { const pending = getRetryQueue().filter(item => item.sessionId !== payload.sessionId); pending.push(compactCheckinPayload(payload)); setRetryQueue(pending); return false; } }
-async function loadCheckins() { if (!accountUser) { checkins = []; renderDashboard(); return; } try { const response = await fetch(`/api/checkins?from=${GOAL_START}&to=${GOAL_END}`); const data = await response.json(); if (!response.ok) throw new Error(data.error); checkins = Array.isArray(data.sessions) ? data.sessions : []; } catch { checkins = []; } renderDashboard(); }
+async function loadCheckins() {
+  if (!accountUser) { checkins = []; renderDashboard(); return; }
+  try {
+    const summaryResponse = await fetch(`/api/checkins?from=${GOAL_START}&to=${GOAL_END}`);
+    const summaryData = await summaryResponse.json();
+    if (!summaryResponse.ok) throw new Error(summaryData.error);
+    const summaries = Array.isArray(summaryData.sessions) ? summaryData.sessions : [];
+    const today = studyDateForSession();
+    const recentStart = dateRange(GOAL_START, today).slice(-7)[0] || GOAL_START;
+    const detailResponse = await fetch(`/api/checkins?from=${recentStart}&to=${today}&include=questions`);
+    const detailData = await detailResponse.json();
+    const details = detailResponse.ok && Array.isArray(detailData.sessions) ? detailData.sessions : [];
+    const detailById = new Map(details.map(session => [session.sessionId, session]));
+    checkins = summaries.map(session => detailById.get(session.sessionId) || session);
+  } catch { checkins = []; }
+  renderDashboard();
+}
 async function loadProgress() { if (!accountUser) return; try { const response = await fetch('/api/progress'); const data = await response.json(); if (!response.ok) throw new Error(data.error); progress = Object.fromEntries((data.cards || []).map(item => [item.verb, item])); dailyHistory = Object.fromEntries((data.dailyStats || data.dailyCounts || []).map(item => [item.date, { learned: Number(item.learned ?? item.count ?? 0), uniqueLearned: Number(item.uniqueLearned ?? item.learned ?? item.count ?? 0), remembered: Number(item.remembered ?? 0) }])); totalReviewCount = Number(data.totalReviewCount || 0); } catch { progress = {}; dailyHistory = {}; totalReviewCount = 0; } }
 async function loadAccountData() { await Promise.all([loadProgress(), loadCheckins(), loadVocabProgress()]); await flushRetryQueue(); renderDashboard(); }
 async function loadAuth() { try { const response = await fetch('/api/auth'); const data = await readAuthResponse(response); accountUser = data.user || null; updateAccountUI(); if (accountUser) await loadAccountData(); else renderDashboard(); } catch { accountUser = null; updateAccountUI(); renderDashboard(); } }
@@ -661,50 +730,281 @@ async function loadAuth() { try { const response = await fetch('/api/auth'); con
 function updateStudyOrderUI() { const toggle = $$('#studyOrderToggle'); if (!toggle) return; toggle.checked = studyOrder === 'random'; $$('#studyOrderHint').textContent = studyOrder === 'random' ? '每次开始会重新打乱 20 张待复习卡' : '按动词星球原表顺序安排 20 张卡'; }
 function setStudyOrder(order) { studyOrder = order === 'random' ? 'random' : 'sequential'; localStorage.setItem('verb-study-order', studyOrder); updateStudyOrderUI(); }
 function hideHome(show) { ['welcomePanel', 'goalPanel', 'modulePanel', 'selectionPanel', 'analyticsPanel', 'calendarPanel'].forEach(id => $$('#' + id)?.classList.toggle('hidden', !show)); document.querySelector('.how')?.classList.toggle('hidden', !show); $$('#studyPanel').classList.toggle('hidden', show); }
-function resetReveal() { checked = false; $$('#answerReveal').classList.add('hidden'); $$('#revealAnswerButton').classList.remove('hidden'); $$('#verbAnswerContent').classList.toggle('hidden', currentModule !== 'verb'); $$('#vocabAnswerContent').classList.toggle('hidden', currentModule === 'verb'); $$('#finishMetrics').classList.add('hidden'); $$('#ratingBlock').classList.remove('hidden'); $$('#nextQuestionButton').classList.add('hidden'); const input = $$('#vocabInput'); if (input) { input.disabled = false; input.classList.remove('correct', 'incorrect'); } }
+function handwritingIds() { return { canvas: '#handwritingOverlay', undo: '#handwritingUndoButton', clear: '#handwritingClearButton', status: '#handwritingStatus' }; }
+function visibleHandwritingStage() {
+  if (!current || !checked || currentModule === 'verb') return 'first';
+  return firstAnswerSource === 'handwriting' && handwritingFirstSelfAssessment === null ? 'first' : 'second';
+}
+function activeHandwritingStage() { const stage = visibleHandwritingStage(); return handwritingCanWrite(stage) ? stage : ''; }
+function handwritingToolStage() { return visibleHandwritingStage(); }
+function handwritingCanWrite(stage) {
+  if (stage === 'first') return Boolean(current) && handwritingLogic.canWrite('first', { checked, current: true });
+  return currentModule !== 'verb' && handwritingLogic.canWrite('second', { checked, selfAssessment: handwritingFirstSelfAssessment, submitted: secondAnswerSubmitted, current: Boolean(current) });
+}
+function handwritingPoint(event) { const panel = $$('#studyPanel'); const rect = panel?.getBoundingClientRect() || { left: 0, top: 0, width: 800, height: 600 }; return { x: Math.max(0, Math.min(1, (event.clientX - rect.left) / Math.max(1, rect.width))), y: Math.max(0, Math.min(1, (event.clientY - rect.top) / Math.max(1, rect.height))), pressure: Number.isFinite(event.pressure) && event.pressure > 0 ? event.pressure : 0.5 }; }
+function drawHandwritingBoard(stage) { const board = handwritingBoards[stage]; const canvas = board.canvas || $$('#handwritingOverlay'); if (!canvas) return; const panel = $$('#studyPanel'); const rect = panel?.getBoundingClientRect() || { width: 800, height: 600 }; const width = rect.width || 800; const height = rect.height || 600; const context = canvas.getContext('2d'); if (!context) return; context.clearRect(0, 0, width, height); context.lineCap = 'round'; context.lineJoin = 'round'; context.strokeStyle = '#273870'; for (const stroke of board.strokes) { if (!stroke.length) continue; context.beginPath(); context.moveTo(stroke[0].x * width, stroke[0].y * height); if (stroke.length === 1) context.arc(stroke[0].x * width, stroke[0].y * height, 2, 0, Math.PI * 2); else for (let index = 1; index < stroke.length; index += 1) context.lineTo(stroke[index].x * width, stroke[index].y * height); context.lineWidth = 2 + Math.min(4, Math.max(0, stroke[stroke.length - 1].pressure || 0.5) * 3); context.stroke(); } }
+function resizeHandwritingBoard(stage = 'first') { const board = handwritingBoards[stage]; const canvas = board.canvas || $$('#handwritingOverlay'); if (!canvas) return; board.canvas = canvas; const panel = $$('#studyPanel'); const rect = panel?.getBoundingClientRect() || { width: 800, height: 600 }; const size = handwritingLogic.canvasSize(rect.width || 800, rect.height || 600, globalThis.devicePixelRatio || 1); if (canvas.width !== size.pixelWidth || canvas.height !== size.pixelHeight) { canvas.width = size.pixelWidth; canvas.height = size.pixelHeight; const context = canvas.getContext('2d'); context?.setTransform(size.ratio, 0, 0, size.ratio, 0, 0); } drawHandwritingBoard(stage); }
+function updateHandwritingStatus(stage = visibleHandwritingStage()) { const board = handwritingBoards[stage]; const status = $$(handwritingIds().status); if (!status) return; if (stage === 'first' && checked) status.textContent = board.strokes.length ? `保留第一次的 ${board.strokes.length} 笔；请对照答案并确认是否写对。` : '答案已显示，请确认第一次是否写对。'; else status.textContent = stage === 'first' ? (board.strokes.length ? `已书写 ${board.strokes.length} 笔；键盘为空时可以检查并显示答案。` : '键盘为空时，可在学习页空白处用 Apple Pencil 书写。') : (board.strokes.length ? `已重新书写 ${board.strokes.length} 笔；可以提交第二次输入。` : '答案已显示；键盘为空时用 Apple Pencil 写一笔即可提交。'); }
+function clearHandwritingBoard(stage) { const board = handwritingBoards[stage]; handwritingLogic.clear(board); resizeHandwritingBoard(stage); updateHandwritingStatus(stage); }
+function undoHandwritingStroke(stage) { const board = handwritingBoards[stage]; if (!board.strokes.length) return; handwritingLogic.undo(board); resizeHandwritingBoard(stage); updateHandwritingStatus(stage); }
+function isInkInteractiveTarget(target) { return Boolean(target?.closest?.('button, input, textarea, select, a, [contenteditable="true"], .study-top, .study-ink-tools')); }
+function isPenPointer(event) { return Boolean(handwritingLogic.shouldCapturePointer?.(event.pointerType) ?? event.pointerType === 'pen'); }
+let handwritingActiveStage = '';
+function setupHandwritingOverlay() { const canvas = $$('#handwritingOverlay'); const panel = $$('#studyPanel'); if (!canvas || !panel || canvas.dataset.bound === 'true') return; canvas.dataset.bound = 'true'; handwritingBoards.first.canvas = canvas; handwritingBoards.second.canvas = canvas; const finish = event => { const board = handwritingBoards[handwritingActiveStage]; if (board?.active && board.active.pointerId === event.pointerId) board.active = null; if (panel.hasPointerCapture?.(event.pointerId)) panel.releasePointerCapture(event.pointerId); handwritingActiveStage = ''; updateHandwritingStatus(visibleHandwritingStage()); }; panel.addEventListener('pointerdown', event => { if (!isPenPointer(event) || isInkInteractiveTarget(event.target)) return; const stage = activeHandwritingStage(); if (!stage || !handwritingCanWrite(stage)) return; event.preventDefault(); handwritingActiveStage = stage; panel.setPointerCapture?.(event.pointerId); const stroke = []; stroke.pointerId = event.pointerId; handwritingBoards[stage].active = stroke; handwritingBoards[stage].strokes.push(stroke); stroke.push(handwritingPoint(event)); drawHandwritingBoard(stage); updateHandwritingStatus(stage); }, true); panel.addEventListener('pointermove', event => { const stage = handwritingActiveStage; const board = handwritingBoards[stage]; if (!isPenPointer(event) || !stage || !board?.active || board.active.pointerId !== event.pointerId || !handwritingCanWrite(stage)) return; event.preventDefault(); board.active.push(handwritingPoint(event)); drawHandwritingBoard(stage); updateHandwritingStatus(stage); }, true); panel.addEventListener('pointerup', finish, true); panel.addEventListener('pointercancel', finish, true); $$(handwritingIds().undo)?.addEventListener('click', () => { const stage = handwritingToolStage(); if (stage) undoHandwritingStroke(stage); }); $$(handwritingIds().clear)?.addEventListener('click', () => { const stage = handwritingToolStage(); if (stage) clearHandwritingBoard(stage); }); resizeHandwritingBoard('first'); updateHandwritingStatus('first'); }
+function handwritingHasStroke(stage) { return handwritingLogic.hasInk(handwritingBoards[stage]); }
+function firstKeyboardInputState(stage = 'first') {
+  if (stage === 'first' && currentModule === 'verb') {
+    const inputs = [...document.querySelectorAll('.sentence-input')];
+    const values = inputs.map(input => input.value);
+    return { hasAny: values.some(value => normalization.normalizeAnswer(value)), complete: values.length === 2 && values.every(value => normalization.normalizeAnswer(value)), values };
+  }
+  if (practiceLogic.isSentenceCard(current)) {
+    const values = sentenceValues(stage);
+    return { hasAny: values.some(value => normalization.normalizeAnswer(value)), complete: values.length > 0 && values.every(value => normalization.normalizeAnswer(value)), values };
+  }
+  syncLetters(stage);
+  const cells = [...document.querySelectorAll(`${stage === 'first' ? '#letterInputs' : '#secondLetterInputs'} .letter-cell`)];
+  const value = $$(stage === 'first' ? '#vocabInput' : '#secondVocabInput')?.value || '';
+  return { hasAny: cells.some(cell => cell.value), complete: cells.length > 0 && cells.every(cell => cell.value), values: [value] };
+}
+function clearFirstVocabInput() { if (practiceLogic.isSentenceCard(current)) $$('#sentenceFirstInputs').querySelectorAll('.sentence-card-input').forEach(input => { input.value = ''; input.disabled = false; }); else renderLetterInputs(0, 'first'); clearHandwritingBoard('first'); }
+function renderVocabInputMode() { const sentence = practiceLogic.isSentenceCard(current); $$('#wordQuestionView').classList.toggle('hidden', sentence); $$('#sentenceQuestionView').classList.toggle('hidden', !sentence); if (sentence) renderSentenceInputs('first'); else renderLetterInputs(0, 'first'); resizeHandwritingBoard('first'); updateHandwritingStatus('first'); }
+function selfAssessmentIds(module = currentModule) { return module === 'verb' ? { panel: '#verbHandwritingSelfAssessment', correct: '#verbHandwritingFirstCorrectButton', needsCorrection: '#verbHandwritingFirstNeedsCorrectionButton', status: '#verbHandwritingSelfAssessmentStatus' } : { panel: '#handwritingSelfAssessment', correct: '#handwritingFirstCorrectButton', needsCorrection: '#handwritingFirstNeedsCorrectionButton', status: '#handwritingSelfAssessmentStatus' }; }
+function setSelfAssessmentVisible(visible) { const ids = selfAssessmentIds(); $$(ids.panel)?.classList.toggle('hidden', !visible); }
+function resetSelfAssessment() { handwritingFirstSelfAssessment = null; for (const module of ['verb', 'school', 'houhai']) { const ids = selfAssessmentIds(module); $$(ids.correct)?.removeAttribute('disabled'); $$(ids.needsCorrection)?.removeAttribute('disabled'); if ($$(ids.status)) { $$(ids.status).textContent = ''; $$(ids.status).className = 'message'; } $$(ids.panel)?.classList.add('hidden'); } }
+function resetReveal() { checked = false; firstAnswerSource = ''; secondAnswerSubmitted = false; secondQuestionCorrect = false; resetSelfAssessment(); clearHandwritingBoard('first'); clearHandwritingBoard('second'); $$('#answerReveal').classList.add('hidden'); $$('#revealAnswerButton').classList.remove('hidden'); $$('#verbAnswerContent').classList.toggle('hidden', currentModule !== 'verb'); $$('#vocabAnswerContent').classList.toggle('hidden', currentModule === 'verb'); $$('#vocabSecondCheck')?.classList.add('hidden'); $$('#vocabRatings')?.classList.add('hidden'); $$('#finishMetrics').classList.add('hidden'); $$('#ratingBlock').classList.remove('hidden'); $$('#nextQuestionButton').classList.add('hidden'); const input = $$('#vocabInput'); if (input) { input.disabled = false; input.classList.remove('correct', 'incorrect'); } const secondInput = $$('#secondVocabInput'); if (secondInput) { secondInput.disabled = false; secondInput.value = ''; } $$('#secondAnswerResult').textContent = ''; $$('#secondAnswerResult').className = 'message'; }
 function studyMetrics() { const elapsed = sessionMetrics?.elapsedSeconds || Math.max(1, Math.round((Date.now() - sessionStartedAt) / 1000)); const correct = sessionMetrics?.correctCount ?? sessionAnswers.filter(answer => answer.correct).length; return { elapsedSeconds: Math.max(1, elapsed), speed: Math.round((20 * 60 / Math.max(1, elapsed)) * 10) / 10, accuracy: Math.round(correct / 20 * 100), correctCount: correct }; }
 function setMetrics(metrics, target = 'finishMetrics') { const element = $$('#' + target); if (!element) return; if (target === 'finishMetrics') { $$('#elapsedMetric').textContent = metrics.elapsedSeconds; $$('#speedMetric').textContent = metrics.speed.toFixed(1); $$('#accuracyMetric').textContent = metrics.accuracy; } else { element.innerHTML = `<div><span>用时</span><strong>${metrics.elapsedSeconds}</strong><small>秒</small></div><div><span>速度</span><strong>${metrics.speed.toFixed(1)}</strong><small>题 / 分</small></div><div><span>正确率</span><strong>${metrics.accuracy}</strong><small>%</small></div>`; } element.classList.remove('hidden'); }
-function prepareVerbCard() { const verb = current; $$('#questionLabel').textContent = '根据例句回忆两种变化'; $$('#verbQuestionView').classList.remove('hidden'); $$('#vocabQuestionView').classList.add('hidden'); $$('#baseWord').textContent = verb.base; $$('#promptText').textContent = '在两个空格中输入答案，再点击检查'; $$('#resultText').textContent = '对照答案和完整例句，再选择这张卡的真实难度。'; $$('#resultText').className = ''; renderMemoryExamples(verb); $$('.sentence-input')?.focus(); }
+function prepareVerbCard() { const verb = current; $$('#questionLabel').textContent = '根据例句回忆两种变化'; $$('#verbQuestionView').classList.remove('hidden'); $$('#vocabQuestionView').classList.add('hidden'); $$('#baseWord').textContent = verb.base; $$('#promptText').textContent = '在两个空格中输入答案；也可以用 Apple Pencil 在学习页空白处书写，再点击检查'; $$('#resultText').textContent = '键盘输入优先；键盘为空时，手写至少一笔即可检查。'; $$('#resultText').className = ''; renderMemoryExamples(verb); resizeHandwritingBoard('first'); updateHandwritingStatus('first'); $$('.sentence-input')?.focus(); }
 function prepareVocabCard() {
-  $$('#questionLabel').textContent = MODULE_LABELS[currentModule] + ' · 看中文写英文';
+  const sentence = practiceLogic.isSentenceCard(current);
+  $$('#vocabRatingTitle').textContent = sentence ? '这道句式记住了吗？' : '这个单词记住了吗？';
+  $$('#questionLabel').textContent = MODULE_LABELS[currentModule] + (sentence ? ' · 看中文写句子' : ' · 看中文写英文');
   $$('#verbQuestionView').classList.add('hidden');
   $$('#vocabQuestionView').classList.remove('hidden');
   $$('#frontMetadata').innerHTML = metadataHtml(current, currentModule, true);
-  $$('#vocabMeaning').textContent = current.meaning;
-  $$('#vocabChineseExample').textContent = current.chineseExample;
+  $$('#wordQuestionView').classList.toggle('hidden', sentence);
+  $$('#sentenceQuestionView').classList.toggle('hidden', !sentence);
+  if (sentence) renderSentenceInputs('first');
+  else {
+    $$('#vocabMeaning').textContent = current.meaning;
+    $$('#vocabChineseExample').textContent = current.chineseExample;
+  }
   currentReviewId = crypto.randomUUID();
   $$('#vocabSaveStatus').textContent = '';
   $$('#vocabRatings').classList.add('hidden');
-  renderLetterInputs(0);
+  renderVocabInputMode();
 }
-function showNext() { if (!queue.length) { showComplete(); return; } current = queue.shift(); currentQuestionNumber = sessionAnswers.length + 1; resetReveal(); $$('#card').classList.remove('hidden'); $$('#completeState').classList.add('hidden'); $$('#studyCount').textContent = `${MODULE_LABELS[currentModule]} · 第 ${currentQuestionNumber} / 20`; $$('#timerText').textContent = '计时中'; if (currentModule === 'verb') prepareVerbCard(); else prepareVocabCard(); }
-function startModule(module) { if (vocabSaving) return; if (accountUser && module !== 'verb' && !vocabReady) { openAuth(); setMessage('词汇复习安排还未同步，请稍后重试或刷新页面。', 'error'); return; } if (!accountUser) { openAuth(); setMessage('请先登录，才能保存学习记录。'); return; } const nextQueue = module === 'verb' ? buildVerbQueue() : buildVocabQueue(module); if (nextQueue.length < 20) { setMessage('词库不足以开始本次 20 题学习。', 'error'); return; } currentModule = module; queue = nextQueue; sessionStartedAt = Date.now(); sessionCompletedAt = 0; sessionId = crypto.randomUUID(); sessionAnswers = []; sessionMetrics = null; sessionSaved = false; hideHome(false); showNext(); }
-function setSessionMetrics() { if (!sessionMetrics) { const elapsedSeconds = Math.max(1, Math.round((Date.now() - sessionStartedAt) / 1000)); const correctCount = sessionAnswers.filter(answer => answer.correct).length + (sessionAnswers.length === 20 ? 0 : (currentQuestionCorrect ? 1 : 0)); sessionCompletedAt = Date.now(); sessionMetrics = { elapsedSeconds, correctCount, speed: Math.round((20 * 60 / elapsedSeconds) * 10) / 10, accuracy: Math.round(correctCount / 20 * 100) }; } setMetrics(sessionMetrics); }
-async function persistCurrentSession() { if (sessionSaved || sessionAnswers.length !== 20) return true; setSessionMetrics(); const payload = { sessionId, module: currentModule, studyDate: studyDateForSession(), startedAt: new Date(sessionStartedAt).toISOString(), completedAt: new Date(sessionCompletedAt || Date.now()).toISOString(), elapsedSeconds: sessionMetrics.elapsedSeconds, answers: sessionAnswers }; const saved = await saveSession(payload); sessionSaved = saved; if (!saved) setMessage('本次打卡暂时离线保存，将在下次登录时自动重试。', 'error'); return saved; }
-function revealVerbAnswer() { if (checked || !current) return; checked = true; const pastCorrect = judgeSentenceInput('past', exampleAnswers(current, 'past')); const participleCorrect = judgeSentenceInput('participle', exampleAnswers(current, 'participle')); currentQuestionCorrect = pastCorrect && participleCorrect; $$('#resultText').textContent = currentQuestionCorrect ? '两个答案都正确！再选择这张卡的真实难度。' : `${pastCorrect ? '过去式正确' : '过去式需要再看'}，${participleCorrect ? '过去分词正确' : '过去分词需要再看'}。`; $$('#resultText').className = currentQuestionCorrect ? 'right' : 'wrong'; $$('#revealPast').textContent = current.past; $$('#revealParticiple').textContent = current.participle; $$('#revealBase').textContent = current.base; $$('#revealMeaning').textContent = meanings[current.base]; renderMemoryExamples(current, true); renderRelated(current); $$('#revealAnswerButton').classList.add('hidden'); $$('#answerReveal').classList.remove('hidden'); if (currentQuestionNumber === 20) { const elapsedSeconds = Math.max(1, Math.round((Date.now() - sessionStartedAt) / 1000)); const correctCount = sessionAnswers.filter(answer => answer.correct).length + (currentQuestionCorrect ? 1 : 0); sessionCompletedAt = Date.now(); sessionMetrics = { elapsedSeconds, correctCount, speed: Math.round((20 * 60 / elapsedSeconds) * 10) / 10, accuracy: Math.round(correctCount / 20 * 100) }; setMetrics(sessionMetrics); } }
-async function rateCard(rating) { if (!current || !checked) return; document.querySelectorAll('[data-rating]').forEach(button => { button.disabled = true; }); try { const response = await fetch('/api/progress', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ verb: current.base, rating, date: studyDateForSession() }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); progress[current.base] = data.card; if (data.dailyStat) dailyHistory[data.studyDate] = { learned: Number(data.dailyStat.learned), uniqueLearned: Number(data.dailyStat.uniqueLearned), remembered: Number(data.dailyStat.remembered) }; else { const day = dailyHistory[data.studyDate] || { learned: 0, uniqueLearned: 0, remembered: 0 }; day.learned += 1; day.uniqueLearned += 1; if (['good', 'easy'].includes(rating)) day.remembered += 1; dailyHistory[data.studyDate] = day; } totalReviewCount += 1; sessionAnswers.push({ questionId: `verb:${current.base}`, correct: currentQuestionCorrect }); if (sessionAnswers.length === 20) { await persistCurrentSession(); showComplete(); } else showNext(); } catch (error) { setMessage(error.message || '保存失败，请稍后再试。', 'error'); } finally { document.querySelectorAll('[data-rating]').forEach(button => { button.disabled = false; }); } }
+function showNext() { if (!queue.length) { showComplete(); return; } current = queue.shift(); currentQuestionNumber = sessionAnswers.length + 1; resetReveal(); $$('#handwritingTools').classList.remove('hidden'); $$('#handwritingOverlay').classList.remove('hidden'); $$('#card').classList.remove('hidden'); $$('#completeState').classList.add('hidden'); $$('#studyCount').textContent = `${MODULE_LABELS[currentModule]} · 第 ${currentQuestionNumber} / 20`; $$('#timerText').textContent = '计时中'; if (currentModule === 'verb') prepareVerbCard(); else prepareVocabCard(); }
+function startModule(module) { if (vocabSaving) return; if (accountUser && module !== 'verb' && !vocabReady) { openAuth(); setMessage('词汇复习安排还未同步，请稍后重试或刷新页面。', 'error'); return; } if (!accountUser) { openAuth(); setMessage('请先登录，才能保存学习记录。'); return; } const nextQueue = module === 'verb' ? buildVerbQueue() : buildVocabQueue(module); if (nextQueue.length < 20) { setMessage('词库不足以开始本次 20 题学习。', 'error'); return; } currentModule = module; queue = nextQueue; sessionScopes = module === 'verb' ? [] : scopesForEntries(nextQueue); sessionStartedAt = Date.now(); sessionCompletedAt = 0; sessionId = crypto.randomUUID(); sessionAnswers = []; sessionMetrics = null; sessionSaved = false; hideHome(false); showNext(); }
+function setSessionMetrics() { if (!sessionMetrics && sessionAnswers.length >= 20) { const elapsedSeconds = Math.max(1, Math.round((Date.now() - sessionStartedAt) / 1000)); const correctCount = sessionAnswers.filter(answer => answer.correct).length; sessionCompletedAt = Date.now(); sessionMetrics = { elapsedSeconds, correctCount, speed: Math.round((20 * 60 / elapsedSeconds) * 10) / 10, accuracy: Math.round(correctCount / 20 * 100) }; } if (sessionMetrics) setMetrics(sessionMetrics); }
+async function persistCurrentSession() { if (sessionSaved || sessionAnswers.length !== 20) return true; setSessionMetrics(); const payload = { sessionId, module: currentModule, studyDate: studyDateForSession(), startedAt: new Date(sessionStartedAt).toISOString(), completedAt: new Date(sessionCompletedAt || Date.now()).toISOString(), elapsedSeconds: sessionMetrics.elapsedSeconds, answers: sessionAnswers, scopes: sessionScopes }; const saved = await saveSession(payload); sessionSaved = saved; if (!saved) setMessage('本次打卡暂时离线保存，将在下次登录时自动重试。', 'error'); return saved; }
+function revealVerbAnswer() {
+  if (checked || !current) return;
+  const keyboard = firstKeyboardInputState('first');
+  const handwritten = handwritingHasStroke('first');
+  if (keyboard.hasAny && !keyboard.complete) {
+    $$('#resultText').textContent = '请完成两个键盘答案，或清空键盘后用 Apple Pencil 书写。';
+    $$('#resultText').className = 'wrong';
+    document.querySelector('.sentence-input:not(:disabled)')?.focus();
+    return;
+  }
+  if (!keyboard.hasAny && !handwritten) {
+    $$('#resultText').textContent = '请先输入两个键盘答案，或在学习页空白处用 Apple Pencil 写至少一笔。';
+    $$('#resultText').className = 'wrong';
+    document.querySelector('.sentence-input:not(:disabled)')?.focus();
+    return;
+  }
+  checked = true;
+  if (keyboard.hasAny) {
+    firstAnswerSource = 'keyboard';
+    const pastCorrect = judgeSentenceInput('past', exampleAnswers(current, 'past'));
+    const participleCorrect = judgeSentenceInput('participle', exampleAnswers(current, 'participle'));
+    currentQuestionCorrect = pastCorrect && participleCorrect;
+    handwritingFirstSelfAssessment = currentQuestionCorrect;
+    $$('#resultText').textContent = currentQuestionCorrect ? '两个答案都正确！再选择这张卡的真实难度。' : `${pastCorrect ? '过去式正确' : '过去式需要再看'}，${participleCorrect ? '过去分词正确' : '过去分词需要再看'}。`;
+    $$('#resultText').className = currentQuestionCorrect ? 'right' : 'wrong';
+  } else {
+    firstAnswerSource = 'handwriting';
+    currentQuestionCorrect = false;
+    document.querySelectorAll('.sentence-input').forEach(input => { input.disabled = true; });
+    $$('#resultText').textContent = '答案已显示。请明确选择第一次手写是否正确，再选择复习难度。';
+    $$('#resultText').className = '';
+  }
+  $$('#revealPast').textContent = current.past;
+  $$('#revealParticiple').textContent = current.participle;
+  $$('#revealBase').textContent = current.base;
+  $$('#revealMeaning').textContent = meanings[current.base];
+  renderMemoryExamples(current, true);
+  renderRelated(current);
+  $$('#revealAnswerButton').classList.add('hidden');
+  $$('#answerReveal').classList.remove('hidden');
+  setSelfAssessmentVisible(firstAnswerSource === 'handwriting');
+  $$('#ratingBlock').classList.toggle('hidden', firstAnswerSource === 'handwriting');
+  resizeHandwritingBoard('first');
+  updateHandwritingStatus('first');
+}
+async function rateCard(rating) { if (!current || !checked || (firstAnswerSource === 'handwriting' && handwritingFirstSelfAssessment === null)) return; document.querySelectorAll('[data-rating]').forEach(button => { button.disabled = true; }); try { const response = await fetch('/api/progress', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ verb: current.base, rating, date: studyDateForSession() }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); progress[current.base] = data.card; if (data.dailyStat) dailyHistory[data.studyDate] = { learned: Number(data.dailyStat.learned), uniqueLearned: Number(data.dailyStat.uniqueLearned), remembered: Number(data.dailyStat.remembered) }; else { const day = dailyHistory[data.studyDate] || { learned: 0, uniqueLearned: 0, remembered: 0 }; day.learned += 1; day.uniqueLearned += 1; if (['good', 'easy'].includes(rating)) day.remembered += 1; dailyHistory[data.studyDate] = day; } totalReviewCount += 1; sessionAnswers.push({ questionId: `verb:${current.base}`, correct: Boolean(currentQuestionCorrect) }); if (sessionAnswers.length === 20) { await persistCurrentSession(); showComplete(); } else showNext(); } catch (error) { setMessage(error.message || '保存失败，请稍后再试。', 'error'); } finally { document.querySelectorAll('[data-rating]').forEach(button => { button.disabled = false; }); } }
+function sentenceAnswers(part) { return Array.isArray(part?.answers) && part.answers.length ? part.answers : [part?.answer || '']; }
+function sentenceValues(stage) { return [...document.querySelectorAll(`#${stage === 'first' ? 'sentenceFirstInputs' : 'sentenceSecondInputs'} .sentence-card-input`)].map(input => input.value); }
+function sentenceResults(entry, values) { return practiceLogic.sentenceParts(entry).map((part, index) => sentenceAnswers(part).some(answer => normalization.normalizeAnswer(answer) === normalization.normalizeAnswer(values[index] || ''))); }
+function renderSentenceInputs(stage) {
+  const target = $$(`#${stage === 'first' ? 'sentenceFirstInputs' : 'sentenceSecondInputs'}`);
+  if (!target) return;
+  const parts = practiceLogic.sentenceParts(current);
+  target.innerHTML = parts.map((part, index) => {
+    const maxLength = Math.max(1, ...sentenceAnswers(part).map(answer => String(answer).length)) + 4;
+    return `<div class="sentence-card-row"><label for="${stage}SentenceInput${index}">${escapeHtml(part.prompt)}</label><input id="${stage}SentenceInput${index}" class="sentence-card-input" data-sentence-stage="${stage}" data-part-index="${index}" type="text" maxlength="${maxLength}" autocomplete="off" autocapitalize="sentences" spellcheck="false" placeholder="请输入英文句子" /></div>`;
+  }).join('');
+  target.querySelectorAll('.sentence-card-input').forEach(input => input.addEventListener('keydown', event => {
+    if (event.isComposing || event.key !== 'Enter') return;
+    event.preventDefault();
+    if (stage === 'first') revealVocabAnswer(); else submitVocabSecond();
+  }));
+  target.querySelector('.sentence-card-input')?.focus();
+}
+function renderSentenceAnswers(entry) {
+  const target = $$('#sentenceAnswerList');
+  if (!target) return;
+  target.innerHTML = practiceLogic.sentenceParts(entry).map(part => `<article class="sentence-answer"><span>${escapeHtml(part.prompt)}</span><strong>${sentenceAnswers(part).map(escapeHtml).join(' / ')}</strong></article>`).join('');
+}
+function renderSecondInput() {
+  const sentence = practiceLogic.isSentenceCard(current);
+  $$('#vocabSecondCheck').classList.remove('hidden');
+  $$('#secondAnswerResult').textContent = '';
+  $$('#secondAnswerButton').disabled = handwritingFirstSelfAssessment === null;
+  clearHandwritingBoard('second');
+  if (sentence) {
+    $$('#secondLetterInputs').classList.add('hidden');
+    $$('#secondSpellingVariants').innerHTML = '';
+    $$('#sentenceSecondInputs').classList.remove('hidden');
+    renderSentenceInputs('second');
+  } else {
+    $$('#sentenceSecondInputs').classList.add('hidden');
+    $$('#secondSpellingVariants').innerHTML = '';
+    $$('#secondLetterInputs').classList.remove('hidden');
+    renderLetterInputs(0, 'second');
+  }
+}
+function selectHandwritingSelfAssessment(correct) {
+  if (!checked || firstAnswerSource !== 'handwriting' || handwritingFirstSelfAssessment !== null) return;
+  handwritingFirstSelfAssessment = Boolean(correct);
+  currentQuestionCorrect = handwritingFirstSelfAssessment;
+  const ids = selfAssessmentIds();
+  $$(ids.correct).disabled = true;
+  $$(ids.needsCorrection).disabled = true;
+  $$(ids.status).textContent = currentModule === 'verb'
+    ? (handwritingFirstSelfAssessment ? '已记录：第一次手写正确，可以选择复习难度。' : '已记录：第一次需要订正，可以选择复习难度。')
+    : (handwritingFirstSelfAssessment ? '已记录：第一次手写正确。请在答案显示的学习页空白处再写一次。' : '已记录：第一次需要订正。请在答案显示的学习页空白处再写一次。');
+  $$(ids.status).className = `message ${handwritingFirstSelfAssessment ? 'success' : ''}`.trim();
+  if (currentModule === 'verb') {
+    $$('#ratingBlock').classList.remove('hidden');
+  } else renderSecondInput();
+}
+function focusFirstBlank(stage) {
+  const selector = stage === 'first' ? '#sentenceFirstInputs .sentence-card-input' : '#sentenceSecondInputs .sentence-card-input';
+  document.querySelector(selector + ':not(:disabled)')?.focus();
+}
 function revealVocabAnswer() {
   if (checked || !current) return;
-  syncLetters();
+  const sentence = practiceLogic.isSentenceCard(current);
+  const keyboard = firstKeyboardInputState('first');
+  const handwritten = handwritingHasStroke('first');
+  let values = keyboard.values;
+  if (keyboard.hasAny && !keyboard.complete) {
+    $$('#resultText').textContent = sentence ? '请完成所有键盘句子，或清空键盘后用 Apple Pencil 书写。' : '请完成键盘输入，或清空键盘后用 Apple Pencil 书写。';
+    $$('#resultText').className = 'wrong';
+    if (sentence) focusFirstBlank('first'); else document.querySelector('#letterInputs .letter-cell')?.focus();
+    return;
+  }
+  if (!keyboard.hasAny && !handwritten) {
+    $$('#resultText').textContent = '请先输入键盘答案，或在学习页空白处用 Apple Pencil 写至少一笔。';
+    $$('#resultText').className = 'wrong';
+    if (sentence) focusFirstBlank('first'); else document.querySelector('#letterInputs .letter-cell')?.focus();
+    return;
+  }
+  if (keyboard.hasAny) {
+    firstAnswerSource = 'keyboard';
+    if (sentence) document.querySelectorAll('#sentenceFirstInputs .sentence-card-input').forEach(input => { input.disabled = true; });
+    else document.querySelectorAll('#letterInputs .letter-cell, #spellingVariants button').forEach(input => { input.disabled = true; });
+  } else {
+    firstAnswerSource = 'handwriting';
+    values = [];
+  }
   checked = true;
-  currentQuestionCorrect = normalization.matches(currentModule, current, $$('#vocabInput').value);
-  document.querySelectorAll('.letter-cell, #spellingVariants button').forEach(input => { input.disabled = true; });
-  $$('#letterInputs').classList.add(currentQuestionCorrect ? 'correct' : 'incorrect');
-  $$('#resultText').textContent = currentQuestionCorrect ? '回答正确！这个单词记住了吗？' : '对照完整答案，再选择你的记忆情况。';
-  $$('#resultText').className = currentQuestionCorrect ? 'right' : 'wrong';
+  if (firstAnswerSource === 'keyboard') {
+    const results = sentence ? sentenceResults(current, values) : [normalization.matches(currentModule, current, values[0])];
+    currentQuestionCorrect = results.every(Boolean);
+    handwritingFirstSelfAssessment = currentQuestionCorrect;
+    if (!sentence) $$('#letterInputs').classList.add(currentQuestionCorrect ? 'correct' : 'incorrect');
+    $$('#resultText').textContent = currentQuestionCorrect ? '首次回答正确！先看着答案，再输入一次。' : '对照完整答案，先看着答案，再输入一次。';
+    $$('#resultText').className = currentQuestionCorrect ? 'right' : 'wrong';
+  } else {
+    $$('#resultText').textContent = '答案已显示。请明确选择第一次手写是否正确，再进行第二次输入。';
+    $$('#resultText').className = '';
+    document.querySelectorAll('#sentenceFirstInputs .sentence-card-input, #letterInputs .letter-cell, #spellingVariants button').forEach(input => { input.disabled = true; });
+  }
   $$('#vocabWord').textContent = current.word;
-  $$('#vocabPronunciation').textContent = current.pronunciation + ' · ' + current.partOfSpeech;
+  $$('#vocabPronunciation').textContent = `${current.pronunciation || '—'} · ${current.partOfSpeech || '—'}`;
   $$('#vocabEnglishExample').textContent = current.englishExample;
   $$('#backMetadata').innerHTML = metadataHtml(current, currentModule, false);
+  $$('#vocabBack').classList.toggle('hidden', sentence);
+  $$('#sentenceBack').classList.toggle('hidden', !sentence);
+  if (sentence) renderSentenceAnswers(current);
   $$('#revealAnswerButton').classList.add('hidden');
   $$('#answerReveal').classList.remove('hidden');
   $$('#vocabAnswerContent').classList.remove('hidden');
-  $$('#vocabRatings').classList.remove('hidden');
-  if (currentQuestionNumber === 20) setSessionMetrics();
+  $$('#vocabRatings').classList.add('hidden');
+  setSelfAssessmentVisible(firstAnswerSource === 'handwriting');
+  if (firstAnswerSource === 'keyboard') renderSecondInput();
+  else {
+    $$('#vocabSecondCheck').classList.add('hidden');
+    resizeHandwritingBoard('first');
+    updateHandwritingStatus('first');
+  }
 }
-function showComplete() { const metrics = sessionMetrics || studyMetrics(); $$('#card').classList.add('hidden'); $$('#completeState').classList.remove('hidden'); $$('#completeTitle').textContent = `${MODULE_LABELS[currentModule]}完成！`; $$('#completeSummary').textContent = sessionSaved ? '本次 20 题已记录，继续保持。' : '本次 20 题已完成，记录将在网络恢复后保存。'; setMetrics(metrics, 'completeMetrics'); $$('#timerText').textContent = `${metrics.elapsedSeconds} 秒`; renderDashboard(); }
+function submitVocabSecond() {
+  if (!checked || secondAnswerSubmitted || !current) return;
+  const sentence = practiceLogic.isSentenceCard(current);
+  if (handwritingFirstSelfAssessment === null) {
+    $$('#secondAnswerResult').textContent = '请先选择“第一次写对了”或“需要订正”。';
+    $$('#secondAnswerResult').className = 'message error';
+    return;
+  }
+  const keyboard = firstKeyboardInputState('second');
+  const handwritten = handwritingHasStroke('second');
+  if (keyboard.hasAny && !keyboard.complete) {
+    $$('#secondAnswerResult').textContent = sentence ? '请完成所有第二次键盘句子，或清空键盘后用 Apple Pencil 书写。' : '请完成第二次键盘输入，或清空键盘后用 Apple Pencil 书写。';
+    $$('#secondAnswerResult').className = 'message error';
+    if (sentence) focusFirstBlank('second'); else document.querySelector('#secondLetterInputs .letter-cell')?.focus();
+    return;
+  }
+  if (!keyboard.hasAny && !handwritten) {
+    $$('#secondAnswerResult').textContent = '请完成第二次键盘输入，或在学习页空白处用 Apple Pencil 写至少一笔。';
+    $$('#secondAnswerResult').className = 'message error';
+    if (sentence) focusFirstBlank('second'); else document.querySelector('#secondLetterInputs .letter-cell')?.focus();
+    return;
+  }
+  let values = keyboard.values;
+  if (keyboard.hasAny) {
+    if (sentence) document.querySelectorAll('#sentenceSecondInputs .sentence-card-input').forEach(input => { input.disabled = true; });
+    else document.querySelectorAll('#secondLetterInputs .letter-cell, #secondSpellingVariants button').forEach(input => { input.disabled = true; });
+    const results = sentence ? sentenceResults(current, values) : [normalization.matches(currentModule, current, values[0])];
+    secondQuestionCorrect = results.every(Boolean);
+  } else {
+    values = [];
+    secondQuestionCorrect = null;
+  }
+  secondAnswerSubmitted = true;
+  $$('#secondAnswerResult').textContent = keyboard.hasAny ? (secondQuestionCorrect ? '第二次输入正确，可以选择复习难度。' : '第二次输入已提交，请对照答案后选择复习难度。') : '第二次手写已提交，可以选择复习难度。';
+  $$('#secondAnswerResult').className = !keyboard.hasAny || secondQuestionCorrect ? 'message success' : 'message';
+  $$('#secondAnswerButton').disabled = true;
+  $$('#vocabRatings').classList.remove('hidden');
+}
+function hideAndClearHandwriting() { handwritingLogic.clear(handwritingBoards.first); handwritingLogic.clear(handwritingBoards.second); const canvas = $$('#handwritingOverlay'); canvas?.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height); $$('#handwritingTools')?.classList.add('hidden'); canvas?.classList.add('hidden'); }
+function showComplete() { const metrics = sessionMetrics || studyMetrics(); hideAndClearHandwriting(); $$('#card').classList.add('hidden'); $$('#completeState').classList.remove('hidden'); $$('#completeTitle').textContent = `${MODULE_LABELS[currentModule]}完成！`; $$('#completeSummary').textContent = sessionSaved ? '本次 20 题已记录，继续保持。' : '本次 20 题已完成，记录将在网络恢复后保存。'; setMetrics(metrics, 'completeMetrics'); $$('#timerText').textContent = `${metrics.elapsedSeconds} 秒`; renderDashboard(); }
 function nextQuestion() { if (!checked) return; if (currentQuestionNumber === 20) showComplete(); else showNext(); }
-function leaveStudy() { if (vocabSaving) return; queue = []; current = null; hideHome(true); renderDashboard(); }
+function leaveStudy() { if (vocabSaving) return; hideAndClearHandwriting(); queue = []; current = null; hideHome(true); renderDashboard(); }
 
 async function loadVocabProgress() {
   vocabReady = false;
@@ -717,31 +1017,37 @@ async function loadVocabProgress() {
     vocabReady = true;
   } catch { setMessage('词汇复习安排暂时无法同步，请刷新后重试。', 'error'); }
 }
-function syncLetters() {
-  const cells = [...document.querySelectorAll('.letter-cell')];
+function letterStageIds(stage) { return stage === 'first' ? { input: '#vocabInput', box: '#letterInputs', variants: '#spellingVariants', hint: '#letterHint' } : { input: '#secondVocabInput', box: '#secondLetterInputs', variants: '#secondSpellingVariants', hint: '#secondAnswerPrompt' }; }
+function syncLetters(stage = 'first') {
+  const ids = letterStageIds(stage);
+  const cells = [...document.querySelectorAll(`${ids.box} .letter-cell`)];
   let index = 0;
-  $$('#vocabInput').value = [...letterTemplate].map(char => /[a-z0-9]/i.test(char) ? cells[index++].value || '' : char).join('');
+  const template = stage === 'first' ? letterTemplate : secondLetterTemplate;
+  $$(ids.input).value = [...template].map(char => /[a-z0-9]/i.test(char) ? cells[index++].value || '' : char).join('');
 }
-function renderLetterInputs(variantIndex) {
+function renderLetterInputs(variantIndex, stage = 'first') {
+  const ids = letterStageIds(stage);
   const variants = normalization.variantsFor(currentModule, current);
-  letterTemplate = variants[variantIndex];
-  $$('#vocabInput').value = '';
-  const variantsBox = $$('#spellingVariants');
+  const template = variants[variantIndex] || variants[0] || '';
+  if (stage === 'first') letterTemplate = template; else secondLetterTemplate = template;
+  $$(ids.input).value = '';
+  const variantsBox = $$(ids.variants);
   variantsBox.innerHTML = variants.length > 1 ? variants.map((variant, index) => '<button type="button" aria-pressed="' + (index === variantIndex) + '" data-variant="' + index + '">写法 ' + (index + 1) + ' · ' + (variant.match(/[a-z0-9]/gi) || []).length + ' 格</button>').join('') : '';
-  variantsBox.querySelectorAll('button').forEach(button => button.addEventListener('click', () => renderLetterInputs(Number(button.dataset.variant))));
+  variantsBox.querySelectorAll('button').forEach(button => button.addEventListener('click', () => renderLetterInputs(Number(button.dataset.variant), stage)));
   let index = 0;
-  $$('#letterInputs').className = 'letter-inputs';
-  $$('#letterInputs').innerHTML = letterTemplate.split(' ').map(word => '<span class="letter-word">' + [...word].map(char => /[a-z0-9]/i.test(char)
+  const box = $$(ids.box);
+  box.className = 'letter-inputs';
+  box.innerHTML = template.split(' ').map(word => '<span class="letter-word">' + [...word].map(char => /[a-z0-9]/i.test(char)
     ? '<input class="letter-cell" type="text" maxlength="1" aria-label="第 ' + (++index) + ' 个字母" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="text" />'
     : '<span class="letter-punctuation">' + escapeHtml(char) + '</span>').join('') + '</span>').join('');
-  $$('#letterHint').textContent = index + ' 个字母格 · 自动跳格，支持粘贴；回车检查';
-  const cells = [...document.querySelectorAll('.letter-cell')];
+  if (stage === 'first') $$('#letterHint').textContent = index + ' 个字母格 · 自动跳格，支持粘贴；回车检查';
+  const cells = [...box.querySelectorAll('.letter-cell')];
   cells.forEach((cell, position) => {
     cell.addEventListener('focus', () => cell.select());
     cell.addEventListener('input', event => {
       if (event.isComposing) return;
       cell.value = cell.value.normalize('NFKC').replace(/[^a-z0-9]/gi, '').slice(-1);
-      syncLetters();
+      syncLetters(stage);
       if (cell.value) cells[position + 1]?.focus();
     });
     cell.addEventListener('paste', event => {
@@ -749,24 +1055,24 @@ function renderLetterInputs(variantIndex) {
       const pasted = event.clipboardData.getData('text').normalize('NFKC');
       const letters = [...pasted.replace(/[^a-z0-9]/gi, '')];
       if (letters.length > cells.length - position) {
-        $$('#letterHint').textContent = '粘贴内容超出字母格数，请检查拼写或切换写法。';
+        $$(ids.hint).textContent = '粘贴内容超出字母格数，请检查拼写或切换写法。';
         return;
       }
       letters.forEach((letter, offset) => { cells[position + offset].value = letter; });
-      syncLetters();
+      syncLetters(stage);
       cells[Math.min(cells.length - 1, position + letters.length)]?.focus();
     });
     cell.addEventListener('keydown', event => {
       if (event.isComposing) return;
-      if (event.key === 'Enter') { event.preventDefault(); revealVocabAnswer(); }
-      else if (event.key === 'Backspace' && !cell.value && position > 0) { event.preventDefault(); cells[position - 1].value = ''; cells[position - 1].focus(); syncLetters(); }
+      if (event.key === 'Enter') { event.preventDefault(); if (stage === 'first') revealVocabAnswer(); else submitVocabSecond(); }
+      else if (event.key === 'Backspace' && !cell.value && position > 0) { event.preventDefault(); cells[position - 1].value = ''; cells[position - 1].focus(); syncLetters(stage); }
       else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); cells[position + (event.key === 'ArrowLeft' ? -1 : 1)]?.focus(); }
     });
   });
   cells[0]?.focus();
 }
 async function rateVocab(rating) {
-  if (!checked || !current || vocabSaving) return;
+  if (!current || vocabSaving || !practiceLogic.canRateVocabulary(currentModule, checked, secondAnswerSubmitted)) return;
   vocabSaving = true;
   const buttons = [...document.querySelectorAll('[data-vocab-rating], #backButton, #accountButton')];
   buttons.forEach(button => { button.disabled = true; });
@@ -800,8 +1106,14 @@ async function rateVocab(rating) {
   }
 }
 document.querySelectorAll('[data-vocab-rating]').forEach(button => button.addEventListener('click', () => rateVocab(button.dataset.vocabRating)));
+$$('#secondAnswerButton').addEventListener('click', submitVocabSecond);
+$$('#handwritingFirstCorrectButton').addEventListener('click', () => selectHandwritingSelfAssessment(true));
+$$('#handwritingFirstNeedsCorrectionButton').addEventListener('click', () => selectHandwritingSelfAssessment(false));
+$$('#verbHandwritingFirstCorrectButton').addEventListener('click', () => selectHandwritingSelfAssessment(true));
+$$('#verbHandwritingFirstNeedsCorrectionButton').addEventListener('click', () => selectHandwritingSelfAssessment(false));
+setupHandwritingOverlay();
 
 $$('#accountButton').addEventListener('click', openAuth); $$('#closeAuthButton').addEventListener('click', closeAuth); $$('#authForm').addEventListener('submit', event => { event.preventDefault(); submitAuth('login'); }); $$('#registerButton').addEventListener('click', () => submitAuth('register')); $$('#logoutButton').addEventListener('click', async () => { await fetch('/api/auth', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'logout' }) }); leaveStudy(); vocabProgress = {}; vocabReady = false; accountUser = null; progress = {}; dailyHistory = {}; totalReviewCount = 0; checkins = []; updateAccountUI(); renderDashboard(); });
-$$('#startVerbButton').addEventListener('click', () => startModule('verb')); $$('#startSchoolButton').addEventListener('click', () => startModule('school')); $$('#startHouhaiButton').addEventListener('click', () => startModule('houhai')); $$('#revealAnswerButton').addEventListener('click', () => currentModule === 'verb' ? revealVerbAnswer() : revealVocabAnswer()); $$('#nextQuestionButton').addEventListener('click', nextQuestion); $$('#card').addEventListener('keydown', event => { if (event.isComposing || event.key !== 'Enter') return; if (event.target.matches('.sentence-input')) { event.preventDefault(); revealVerbAnswer(); } if (event.target.matches('#vocabInput')) { event.preventDefault(); revealVocabAnswer(); } }); document.querySelectorAll('[data-rating]').forEach(button => button.addEventListener('click', () => rateCard(button.dataset.rating))); $$('#studyOrderToggle')?.addEventListener('change', event => setStudyOrder(event.target.checked ? 'random' : 'sequential')); $$('#backButton').addEventListener('click', leaveStudy); $$('#completeBackButton').addEventListener('click', leaveStudy); renderFilters('school'); renderFilters('houhai'); updateStudyOrderUI(); renderDashboard(); loadAuth(); window.addEventListener('resize', () => renderCharts());
+$$('#startVerbButton').addEventListener('click', () => startModule('verb')); $$('#startSchoolButton').addEventListener('click', () => startModule('school')); $$('#startHouhaiButton').addEventListener('click', () => startModule('houhai')); $$('#revealAnswerButton').addEventListener('click', () => currentModule === 'verb' ? revealVerbAnswer() : revealVocabAnswer()); $$('#nextQuestionButton').addEventListener('click', nextQuestion); $$('#card').addEventListener('keydown', event => { if (event.isComposing || event.key !== 'Enter') return; if (event.target.matches('.sentence-input')) { event.preventDefault(); revealVerbAnswer(); } if (event.target.matches('#vocabInput')) { event.preventDefault(); revealVocabAnswer(); } if (event.target.matches('.sentence-card-input[data-sentence-stage="first"]')) { event.preventDefault(); revealVocabAnswer(); } if (event.target.matches('.sentence-card-input[data-sentence-stage="second"]')) { event.preventDefault(); submitVocabSecond(); } }); document.querySelectorAll('[data-rating]').forEach(button => button.addEventListener('click', () => rateCard(button.dataset.rating))); $$('#studyOrderToggle')?.addEventListener('change', event => setStudyOrder(event.target.checked ? 'random' : 'sequential')); $$('#backButton').addEventListener('click', leaveStudy); $$('#completeBackButton').addEventListener('click', leaveStudy); renderFilters('school'); renderFilters('houhai'); updateStudyOrderUI(); renderDashboard(); loadAuth(); window.addEventListener('resize', () => { renderCharts(); resizeHandwritingBoard(visibleHandwritingStage()); });
 
-globalThis.__englishPractice = { buildVerbQueue, buildVocabQueue, wordsFor, dateRange, studyMetrics, normalizeAnswer: normalization.normalizeAnswer };
+globalThis.__englishPractice = { buildVerbQueue, buildVocabQueue, wordsFor, dateRange, studyMetrics, normalizeAnswer: normalization.normalizeAnswer, scopesForEntries, sessionScopesForDisplay, canRateVocabulary: practiceLogic.canRateVocabulary, sentenceResults };

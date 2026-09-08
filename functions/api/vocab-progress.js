@@ -4,7 +4,7 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), { status
 const ratings = ['again', 'hard', 'good', 'easy'];
 export function validReview(body) {
   const match = /^(school|houhai):([1-9]\d*)$/.exec(body?.itemId || '');
-  return Boolean(match && Number(match[2]) <= (match[1] === 'school' ? 173 : 223)
+  return Boolean(match && Number(match[2]) <= (match[1] === 'school' ? 185 : 223)
     && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.reviewId || '')
     && ratings.includes(body.rating));
 }
@@ -58,4 +58,3 @@ export async function onRequestPost({ request, env }) {
     return json({ card: scheduleReviews(results)[body.itemId] });
   } catch { return json({ error: '词汇复习记录暂时无法保存，请重试。' }, 503); }
 }
-

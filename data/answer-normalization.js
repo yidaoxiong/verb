@@ -82,6 +82,8 @@
       .replace(hyphenMap, ' ')
       .toLowerCase()
       .trim()
+      .replace(/[.!?。！？]+$/g, '')
+      .trim()
       .replace(/\s+/g, ' ');
   }
   function explicitVariants(module, rawWord) {

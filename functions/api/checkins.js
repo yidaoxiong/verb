@@ -5,6 +5,7 @@ const GOAL_END = '2027-01-17';
 const MODULES = new Set(['verb', 'school', 'houhai']);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_SCOPE_COUNT = 100;
 
 const json = (payload, status = 200) => new Response(JSON.stringify(payload), {
   status,
@@ -45,6 +46,34 @@ function sessionView(row) {
   };
 }
 
+function scopeView(row) {
+  return { unit: String(row.unit || ''), lesson: String(row.lesson || '') };
+}
+
+async function sessionSummaryWithScopes(db, row, userId) {
+  const { results } = await db.prepare(`SELECT unit, lesson FROM english_practice_session_scopes
+    WHERE session_id = ? AND user_id = ? ORDER BY unit, lesson`).bind(row.id, userId).all();
+  return { ...sessionView(row), scopes: (results || []).map(scopeView) };
+}
+
+async function sessionDetails(db, row, userId) {
+  const [answerRows, scopeRows] = await Promise.all([
+    db.prepare(`SELECT question_index, question_id, is_correct
+      FROM english_practice_answers WHERE session_id = ? AND user_id = ? ORDER BY question_index`).bind(row.id, userId).all(),
+    db.prepare(`SELECT unit, lesson FROM english_practice_session_scopes
+      WHERE session_id = ? AND user_id = ? ORDER BY unit, lesson`).bind(row.id, userId).all(),
+  ]);
+  return {
+    ...sessionView(row),
+    scopes: (scopeRows.results || []).map(scopeView),
+    questions: (answerRows.results || []).map(answer => ({
+      questionIndex: Number(answer.question_index),
+      questionId: String(answer.question_id),
+      correct: Boolean(Number(answer.is_correct)),
+    })),
+  };
+}
+
 export async function ensureCheckinTables(db) {
   await db.batch([
     db.prepare(`CREATE TABLE IF NOT EXISTS english_practice_sessions (
@@ -72,6 +101,14 @@ export async function ensureCheckinTables(db) {
     db.prepare('CREATE INDEX IF NOT EXISTS english_practice_sessions_user_date_idx ON english_practice_sessions(user_id, study_date)'),
     db.prepare('CREATE INDEX IF NOT EXISTS english_practice_sessions_user_completed_idx ON english_practice_sessions(user_id, completed_at)'),
     db.prepare('CREATE INDEX IF NOT EXISTS english_practice_answers_user_idx ON english_practice_answers(user_id, session_id)'),
+    db.prepare(`CREATE TABLE IF NOT EXISTS english_practice_session_scopes (
+      session_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      unit TEXT NOT NULL,
+      lesson TEXT NOT NULL,
+      PRIMARY KEY (session_id, unit, lesson)
+    )`),
+    db.prepare('CREATE INDEX IF NOT EXISTS english_practice_session_scopes_user_idx ON english_practice_session_scopes(user_id, session_id)'),
   ]);
 }
 
@@ -92,6 +129,29 @@ function parseAnswers(value) {
   return { answers };
 }
 
+function parseScopes(value) {
+  if (value === undefined) return { scopes: [] };
+  if (!Array.isArray(value) || value.length > MAX_SCOPE_COUNT) return { error: '学习范围记录格式不正确。' };
+  const scopes = [];
+  const seen = new Set();
+  for (const item of value) {
+    if (!item || typeof item !== 'object'
+      || typeof item.unit !== 'string' || item.unit.length < 1 || item.unit.length > 80
+      || typeof item.lesson !== 'string' || item.lesson.length < 1 || item.lesson.length > 120) {
+      return { error: '学习范围记录格式不正确。' };
+    }
+    const unit = item.unit.trim();
+    const lesson = item.lesson.trim();
+    if (!unit || !lesson) return { error: '学习范围记录格式不正确。' };
+    const key = `${unit}\u0000${lesson}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      scopes.push({ unit, lesson });
+    }
+  }
+  return { scopes };
+}
+
 function parseSession(body) {
   if (!body || typeof body !== 'object') return { error: '请求无效。' };
   const sessionId = body.sessionId;
@@ -105,6 +165,8 @@ function parseSession(body) {
   if (!Number.isInteger(elapsedSeconds) || elapsedSeconds < 1 || elapsedSeconds > 7 * 86400) return { error: '用时必须是有效的整数秒数。' };
   const parsedAnswers = parseAnswers(body.answers);
   if (parsedAnswers.error) return parsedAnswers;
+  const parsedScopes = parseScopes(body.scopes);
+  if (parsedScopes.error) return parsedScopes;
 
   const completedAt = body.completedAt ?? new Date().toISOString();
   if (!validTimestamp(completedAt)) return { error: '完成时间格式不正确。' };
@@ -123,6 +185,7 @@ function parseSession(body) {
     speed: roundSpeed(elapsedSeconds),
     accuracy: Math.round(correctCount / 20 * 100),
     answers: parsedAnswers.answers,
+    scopes: parsedScopes.scopes,
   };
 }
 
@@ -136,12 +199,22 @@ export async function onRequestGet({ request, env }) {
   const from = url.searchParams.get('from') || GOAL_START;
   const to = url.searchParams.get('to') || GOAL_END;
   if (!validDate(from) || !validDate(to) || from > to) return json({ error: '日期范围不正确。' }, 400);
+  const includeQuestions = url.searchParams.get('include') === 'questions';
+  if (includeQuestions) {
+    const first = new Date(`${from}T12:00:00Z`);
+    const last = new Date(`${to}T12:00:00Z`);
+    const days = Math.round((last - first) / 86400000) + 1;
+    if (days > 7) return json({ error: '题目明细仅支持最近 7 天。' }, 400);
+  }
   const { results } = await env.DB.prepare(`SELECT id, module, study_date, started_at, completed_at,
       elapsed_seconds, speed, accuracy, question_count
       FROM english_practice_sessions
       WHERE user_id = ? AND study_date >= ? AND study_date <= ?
       ORDER BY completed_at ASC, id ASC`).bind(user.id, from, to).all();
-  return json({ goal: { startDate: GOAL_START, endDate: GOAL_END, days: 139 }, sessions: results.map(sessionView) });
+  const sessions = includeQuestions
+    ? await Promise.all(results.map(row => sessionDetails(env.DB, row, user.id)))
+    : results.map(sessionView);
+  return json({ goal: { startDate: GOAL_START, endDate: GOAL_END, days: 139 }, sessions });
 }
 
 export async function onRequestPost({ request, env }) {
@@ -157,7 +230,7 @@ export async function onRequestPost({ request, env }) {
     const existing = await env.DB.prepare(`SELECT id, module, study_date, started_at, completed_at,
         elapsed_seconds, speed, accuracy, question_count
         FROM english_practice_sessions WHERE id = ? AND user_id = ? LIMIT 1`).bind(parsed.sessionId, user.id).first();
-    if (existing) return json({ ok: true, idempotent: true, session: sessionView(existing) });
+    if (existing) return json({ ok: true, idempotent: true, session: await sessionSummaryWithScopes(env.DB, existing, user.id) });
     const occupied = await env.DB.prepare('SELECT id FROM english_practice_sessions WHERE id = ? LIMIT 1').bind(parsed.sessionId).first();
     if (occupied) return json({ error: 'sessionId 已被使用。' }, 409);
 
@@ -172,11 +245,15 @@ export async function onRequestPost({ request, env }) {
         (session_id, user_id, question_index, question_id, is_correct)
         VALUES (?, ?, ?, ?, ?)`).bind(parsed.sessionId, user.id, answer.questionIndex, answer.questionId, answer.correct ? 1 : 0));
     }
+    for (const scope of parsed.scopes) {
+      statements.push(env.DB.prepare(`INSERT OR IGNORE INTO english_practice_session_scopes
+        (session_id, user_id, unit, lesson) VALUES (?, ?, ?, ?)`).bind(parsed.sessionId, user.id, scope.unit, scope.lesson));
+    }
     await env.DB.batch(statements);
     const saved = await env.DB.prepare(`SELECT id, module, study_date, started_at, completed_at,
         elapsed_seconds, speed, accuracy, question_count
         FROM english_practice_sessions WHERE id = ? AND user_id = ? LIMIT 1`).bind(parsed.sessionId, user.id).first();
-    return json({ ok: true, idempotent: false, session: sessionView(saved) }, 201);
+    return json({ ok: true, idempotent: false, session: await sessionSummaryWithScopes(env.DB, saved, user.id) }, 201);
   } catch {
     return json({ error: '打卡记录暂时无法保存，请稍后重试。' }, 503);
   }
@@ -184,4 +261,4 @@ export async function onRequestPost({ request, env }) {
 
 // Exported only to make the validation contract directly testable in the
 // local test runner; Cloudflare Pages ignores the named helpers at runtime.
-export { inGoal, parseSession, roundSpeed };
+export { inGoal, parseSession, parseScopes, roundSpeed, sessionDetails };
