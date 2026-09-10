@@ -106,11 +106,12 @@ assert.deepEqual((await (await onRequestGet({ env: { DB: db }, request: request(
 
 assert.equal(validReview({ reviewId: crypto.randomUUID(), itemId: 'school:185', rating: 'good' }), true);
 assert.equal(validReview({ reviewId: crypto.randomUUID(), itemId: 'school:186', rating: 'good' }), false);
-assert.equal(logic.canRateVocabulary('school', false, false), false);
-assert.equal(logic.canRateVocabulary('school', true, false), false);
-assert.equal(logic.canRateVocabulary('school', true, true), true);
-assert.equal(logic.canRateVocabulary('houhai', true, true), true);
-assert.equal(logic.canRateVocabulary('verb', true, false), true);
+assert.equal(logic.canRateVocabulary('school', false, false, false), false);
+assert.equal(logic.canRateVocabulary('school', true, true, false), true, 'correct first answer can rate immediately');
+assert.equal(logic.canRateVocabulary('school', true, false, false), false, 'wrong first answer requires correction');
+assert.equal(logic.canRateVocabulary('school', true, false, true), true, 'one correction unlocks rating');
+assert.equal(logic.canRateVocabulary('houhai', true, true, false), true);
+assert.equal(logic.canRateVocabulary('verb', true, false, false), true);
 const sentence = school.find(entry => entry.id === 'school:181');
 assert(logic.isSentenceCard(sentence));
 assert.deepEqual(logic.sentenceParts(sentence).map(part => part.answers.length), [1, 1]);
@@ -118,6 +119,6 @@ assert.deepEqual(logic.metrics(0, 61000, 17), { elapsedSeconds: 61, speed: 19.7,
 assert.equal(normalization.matches('school', school.find(entry => entry.id === 'school:185'), 'I LIKE FOLK DANCE BEST'), true);
 
 sqlite.close();
-console.log('v2.2 tests passed: PDF cards, scope persistence, legacy/idempotent check-ins, repeated sessions, detail privacy, gating, and first-answer metrics');
+console.log('v2.2.1 tests passed: PDF cards, scope persistence, legacy/idempotent check-ins, repeated sessions, conditional correction, and first-answer metrics');
 
 if (process.argv[1] && import.meta.url !== pathToFileURL(process.argv[1]).href) process.exitCode = 0;

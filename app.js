@@ -498,7 +498,7 @@ const similarFamilies = [
   ['weave','freeze'],
   ['win','spin']
 ];
-// v2.2.0 learning application. Verb content and its progress API stay compatible.
+// v2.2.1 learning application. Verb content and its progress API stay compatible.
 const $$ = selector => document.querySelector(selector);
 const normalization = globalThis.AnswerNormalization || { normalizeAnswer: value => String(value ?? '').trim().toLowerCase(), matches: (_module, entry, value) => String(entry?.answer || entry?.word || '').toLowerCase() === String(value || '').trim().toLowerCase() };
 const practiceLogic = globalThis.PracticeLogic || { buildVocabQueue: pool => [...pool].slice(0, 20), metrics: (startedAt, completedAt, correctCount) => { const elapsedSeconds = Math.max(1, Math.round((completedAt - startedAt) / 1000)); return { elapsedSeconds, speed: Math.round((20 * 60 / elapsedSeconds) * 10) / 10, accuracy: Math.round(correctCount / 20 * 100), correctCount }; } };
@@ -533,7 +533,7 @@ let sessionSaved = false;
 let vocabProgress = {}, vocabReady = false, vocabSaving = false, currentReviewId = '', letterTemplate = '', secondLetterTemplate = '';
 let firstAnswerSource = '';
 let handwritingFirstSelfAssessment = null;
-const handwritingLogic = globalThis.HandwritingLogic || { createBoard: () => ({ strokes: [], active: null }), hasInk: board => Boolean(board?.strokes?.some(stroke => stroke.length)), clear: board => { board.strokes = []; board.active = null; }, undo: board => { if (!board.strokes.length) return false; board.strokes.pop(); return true; }, canvasSize: (width, height, ratio = 1) => ({ width: Math.max(1, Math.round(Number(width) || 0)), height: Math.max(1, Math.round(Number(height) || 0)), ratio: Math.max(1, Math.min(4, Number(ratio) || 1)), pixelWidth: Math.max(1, Math.round(Number(width) || 0)) * Math.max(1, Math.min(4, Number(ratio) || 1)), pixelHeight: Math.max(1, Math.round(Number(height) || 0)) * Math.max(1, Math.min(4, Number(ratio) || 1)) }), canWrite: (stage, state = {}) => stage === 'first' ? !state.checked : state.checked && state.selfAssessment !== null && !state.submitted };
+const handwritingLogic = globalThis.HandwritingLogic || { createBoard: () => ({ strokes: [], active: null }), hasInk: board => Boolean(board?.strokes?.some(stroke => stroke.length)), clear: board => { board.strokes = []; board.active = null; }, undo: board => { if (!board.strokes.length) return false; board.strokes.pop(); return true; }, canvasSize: (width, height, ratio = 1) => ({ width: Math.max(1, Math.round(Number(width) || 0)), height: Math.max(1, Math.round(Number(height) || 0)), ratio: Math.max(1, Math.min(4, Number(ratio) || 1)), pixelWidth: Math.max(1, Math.round(Number(width) || 0)) * Math.max(1, Math.min(4, Number(ratio) || 1)), pixelHeight: Math.max(1, Math.round(Number(height) || 0)) * Math.max(1, Math.min(4, Number(ratio) || 1)) }), canWrite: (stage, state = {}) => stage === 'first' ? !state.checked : state.checked && state.selfAssessment === false && !state.submitted };
 const handwritingBoards = { first: { ...handwritingLogic.createBoard(), canvas: null, canvases: [] }, second: { ...handwritingLogic.createBoard(), canvas: null, canvases: [] } };
 let studyOrder = localStorage.getItem('verb-study-order') === 'random' ? 'random' : 'sequential';
 const selectionState = {
@@ -733,18 +733,19 @@ function hideHome(show) { ['welcomePanel', 'goalPanel', 'modulePanel', 'selectio
 function handwritingIds() { return { canvas: '#handwritingOverlay', undo: '#handwritingUndoButton', clear: '#handwritingClearButton', status: '#handwritingStatus' }; }
 function visibleHandwritingStage() {
   if (!current || !checked || currentModule === 'verb') return 'first';
+  if (!practiceLogic.requiresSecondInput(currentModule, currentQuestionCorrect)) return 'first';
   return firstAnswerSource === 'handwriting' && handwritingFirstSelfAssessment === null ? 'first' : 'second';
 }
 function activeHandwritingStage() { const stage = visibleHandwritingStage(); return handwritingCanWrite(stage) ? stage : ''; }
 function handwritingToolStage() { return visibleHandwritingStage(); }
 function handwritingCanWrite(stage) {
   if (stage === 'first') return Boolean(current) && handwritingLogic.canWrite('first', { checked, current: true });
-  return currentModule !== 'verb' && handwritingLogic.canWrite('second', { checked, selfAssessment: handwritingFirstSelfAssessment, submitted: secondAnswerSubmitted, current: Boolean(current) });
+  return practiceLogic.requiresSecondInput(currentModule, currentQuestionCorrect) && handwritingLogic.canWrite('second', { checked, selfAssessment: handwritingFirstSelfAssessment, submitted: secondAnswerSubmitted, current: Boolean(current) });
 }
 function handwritingPoint(event) { const panel = $$('#studyPanel'); const rect = panel?.getBoundingClientRect() || { left: 0, top: 0, width: 800, height: 600 }; return { x: Math.max(0, Math.min(1, (event.clientX - rect.left) / Math.max(1, rect.width))), y: Math.max(0, Math.min(1, (event.clientY - rect.top) / Math.max(1, rect.height))), pressure: Number.isFinite(event.pressure) && event.pressure > 0 ? event.pressure : 0.5 }; }
 function drawHandwritingBoard(stage) { const board = handwritingBoards[stage]; const canvas = board.canvas || $$('#handwritingOverlay'); if (!canvas) return; const panel = $$('#studyPanel'); const rect = panel?.getBoundingClientRect() || { width: 800, height: 600 }; const width = rect.width || 800; const height = rect.height || 600; const context = canvas.getContext('2d'); if (!context) return; context.clearRect(0, 0, width, height); context.lineCap = 'round'; context.lineJoin = 'round'; context.strokeStyle = '#273870'; for (const stroke of board.strokes) { if (!stroke.length) continue; context.beginPath(); context.moveTo(stroke[0].x * width, stroke[0].y * height); if (stroke.length === 1) context.arc(stroke[0].x * width, stroke[0].y * height, 2, 0, Math.PI * 2); else for (let index = 1; index < stroke.length; index += 1) context.lineTo(stroke[index].x * width, stroke[index].y * height); context.lineWidth = 2 + Math.min(4, Math.max(0, stroke[stroke.length - 1].pressure || 0.5) * 3); context.stroke(); } }
 function resizeHandwritingBoard(stage = 'first') { const board = handwritingBoards[stage]; const canvas = board.canvas || $$('#handwritingOverlay'); if (!canvas) return; board.canvas = canvas; const panel = $$('#studyPanel'); const rect = panel?.getBoundingClientRect() || { width: 800, height: 600 }; const size = handwritingLogic.canvasSize(rect.width || 800, rect.height || 600, globalThis.devicePixelRatio || 1); if (canvas.width !== size.pixelWidth || canvas.height !== size.pixelHeight) { canvas.width = size.pixelWidth; canvas.height = size.pixelHeight; const context = canvas.getContext('2d'); context?.setTransform(size.ratio, 0, 0, size.ratio, 0, 0); } drawHandwritingBoard(stage); }
-function updateHandwritingStatus(stage = visibleHandwritingStage()) { const board = handwritingBoards[stage]; const status = $$(handwritingIds().status); if (!status) return; if (stage === 'first' && checked) status.textContent = board.strokes.length ? `保留第一次的 ${board.strokes.length} 笔；请对照答案并确认是否写对。` : '答案已显示，请确认第一次是否写对。'; else status.textContent = stage === 'first' ? (board.strokes.length ? `已书写 ${board.strokes.length} 笔；键盘为空时可以检查并显示答案。` : '键盘为空时，可在学习页空白处用 Apple Pencil 书写。') : (board.strokes.length ? `已重新书写 ${board.strokes.length} 笔；可以提交第二次输入。` : '答案已显示；键盘为空时用 Apple Pencil 写一笔即可提交。'); }
+function updateHandwritingStatus(stage = visibleHandwritingStage()) { const board = handwritingBoards[stage]; const status = $$(handwritingIds().status); if (!status) return; if (stage === 'first' && checked) { if (firstAnswerSource === 'handwriting' && handwritingFirstSelfAssessment === null) status.textContent = board.strokes.length ? `保留第一次的 ${board.strokes.length} 笔；请对照答案并确认是否写对。` : '答案已显示，请确认第一次是否写对。'; else status.textContent = currentQuestionCorrect ? '首次回答正确，可以直接选择复习难度。' : '已记录第一次需要订正，请对照答案。'; } else status.textContent = stage === 'first' ? (board.strokes.length ? `已书写 ${board.strokes.length} 笔；键盘为空时可以检查并显示答案。` : '键盘为空时，可在学习页空白处用 Apple Pencil 书写。') : (board.strokes.length ? `已重新书写 ${board.strokes.length} 笔；可以提交订正。` : '第一次答错；可在学习页空白处用 Apple Pencil 重新书写。'); }
 function clearHandwritingBoard(stage) { const board = handwritingBoards[stage]; handwritingLogic.clear(board); resizeHandwritingBoard(stage); updateHandwritingStatus(stage); }
 function undoHandwritingStroke(stage) { const board = handwritingBoards[stage]; if (!board.strokes.length) return; handwritingLogic.undo(board); resizeHandwritingBoard(stage); updateHandwritingStatus(stage); }
 function isInkInteractiveTarget(target) { return Boolean(target?.closest?.('button, input, textarea, select, a, [contenteditable="true"], .study-top, .study-ink-tools')); }
@@ -772,7 +773,7 @@ function renderVocabInputMode() { const sentence = practiceLogic.isSentenceCard(
 function selfAssessmentIds(module = currentModule) { return module === 'verb' ? { panel: '#verbHandwritingSelfAssessment', correct: '#verbHandwritingFirstCorrectButton', needsCorrection: '#verbHandwritingFirstNeedsCorrectionButton', status: '#verbHandwritingSelfAssessmentStatus' } : { panel: '#handwritingSelfAssessment', correct: '#handwritingFirstCorrectButton', needsCorrection: '#handwritingFirstNeedsCorrectionButton', status: '#handwritingSelfAssessmentStatus' }; }
 function setSelfAssessmentVisible(visible) { const ids = selfAssessmentIds(); $$(ids.panel)?.classList.toggle('hidden', !visible); }
 function resetSelfAssessment() { handwritingFirstSelfAssessment = null; for (const module of ['verb', 'school', 'houhai']) { const ids = selfAssessmentIds(module); $$(ids.correct)?.removeAttribute('disabled'); $$(ids.needsCorrection)?.removeAttribute('disabled'); if ($$(ids.status)) { $$(ids.status).textContent = ''; $$(ids.status).className = 'message'; } $$(ids.panel)?.classList.add('hidden'); } }
-function resetReveal() { checked = false; firstAnswerSource = ''; secondAnswerSubmitted = false; secondQuestionCorrect = false; resetSelfAssessment(); clearHandwritingBoard('first'); clearHandwritingBoard('second'); $$('#answerReveal').classList.add('hidden'); $$('#revealAnswerButton').classList.remove('hidden'); $$('#verbAnswerContent').classList.toggle('hidden', currentModule !== 'verb'); $$('#vocabAnswerContent').classList.toggle('hidden', currentModule === 'verb'); $$('#vocabSecondCheck')?.classList.add('hidden'); $$('#vocabRatings')?.classList.add('hidden'); $$('#finishMetrics').classList.add('hidden'); $$('#ratingBlock').classList.remove('hidden'); $$('#nextQuestionButton').classList.add('hidden'); const input = $$('#vocabInput'); if (input) { input.disabled = false; input.classList.remove('correct', 'incorrect'); } const secondInput = $$('#secondVocabInput'); if (secondInput) { secondInput.disabled = false; secondInput.value = ''; } $$('#secondAnswerResult').textContent = ''; $$('#secondAnswerResult').className = 'message'; }
+function resetReveal() { checked = false; firstAnswerSource = ''; currentQuestionCorrect = false; secondAnswerSubmitted = false; secondQuestionCorrect = false; resetSelfAssessment(); clearHandwritingBoard('first'); clearHandwritingBoard('second'); $$('#answerReveal').classList.add('hidden'); $$('#revealAnswerButton').classList.remove('hidden'); $$('#verbAnswerContent').classList.toggle('hidden', currentModule !== 'verb'); $$('#vocabAnswerContent').classList.toggle('hidden', currentModule === 'verb'); $$('#vocabSecondCheck')?.classList.add('hidden'); $$('#vocabRatingTitle')?.classList.add('hidden'); $$('#vocabRatings')?.classList.add('hidden'); $$('#finishMetrics').classList.add('hidden'); $$('#ratingBlock').classList.remove('hidden'); $$('#nextQuestionButton').classList.add('hidden'); const input = $$('#vocabInput'); if (input) { input.disabled = false; input.classList.remove('correct', 'incorrect'); } const secondInput = $$('#secondVocabInput'); if (secondInput) { secondInput.disabled = false; secondInput.value = ''; } $$('#secondAnswerResult').textContent = ''; $$('#secondAnswerResult').className = 'message'; }
 function studyMetrics() { const elapsed = sessionMetrics?.elapsedSeconds || Math.max(1, Math.round((Date.now() - sessionStartedAt) / 1000)); const correct = sessionMetrics?.correctCount ?? sessionAnswers.filter(answer => answer.correct).length; return { elapsedSeconds: Math.max(1, elapsed), speed: Math.round((20 * 60 / Math.max(1, elapsed)) * 10) / 10, accuracy: Math.round(correct / 20 * 100), correctCount: correct }; }
 function setMetrics(metrics, target = 'finishMetrics') { const element = $$('#' + target); if (!element) return; if (target === 'finishMetrics') { $$('#elapsedMetric').textContent = metrics.elapsedSeconds; $$('#speedMetric').textContent = metrics.speed.toFixed(1); $$('#accuracyMetric').textContent = metrics.accuracy; } else { element.innerHTML = `<div><span>用时</span><strong>${metrics.elapsedSeconds}</strong><small>秒</small></div><div><span>速度</span><strong>${metrics.speed.toFixed(1)}</strong><small>题 / 分</small></div><div><span>正确率</span><strong>${metrics.accuracy}</strong><small>%</small></div>`; } element.classList.remove('hidden'); }
 function prepareVerbCard() { const verb = current; $$('#questionLabel').textContent = '根据例句回忆两种变化'; $$('#verbQuestionView').classList.remove('hidden'); $$('#vocabQuestionView').classList.add('hidden'); $$('#baseWord').textContent = verb.base; $$('#promptText').textContent = '在两个空格中输入答案；也可以用 Apple Pencil 在学习页空白处书写，再点击检查'; $$('#resultText').textContent = '键盘输入优先；键盘为空时，手写至少一笔即可检查。'; $$('#resultText').className = ''; renderMemoryExamples(verb); resizeHandwritingBoard('first'); updateHandwritingStatus('first'); $$('.sentence-input')?.focus(); }
@@ -788,7 +789,6 @@ function prepareVocabCard() {
   if (sentence) renderSentenceInputs('first');
   else {
     $$('#vocabMeaning').textContent = current.meaning;
-    $$('#vocabChineseExample').textContent = current.chineseExample;
   }
   currentReviewId = crypto.randomUUID();
   $$('#vocabSaveStatus').textContent = '';
@@ -866,7 +866,7 @@ function renderSentenceInputs(stage) {
 function renderSentenceAnswers(entry) {
   const target = $$('#sentenceAnswerList');
   if (!target) return;
-  target.innerHTML = practiceLogic.sentenceParts(entry).map(part => `<article class="sentence-answer"><span>${escapeHtml(part.prompt)}</span><strong>${sentenceAnswers(part).map(escapeHtml).join(' / ')}</strong></article>`).join('');
+  target.innerHTML = practiceLogic.sentenceParts(entry).map(part => `<article class="sentence-answer"><strong>${sentenceAnswers(part).map(escapeHtml).join(' / ')}</strong><span>${escapeHtml(part.prompt)}</span></article>`).join('');
 }
 function renderSecondInput() {
   const sentence = practiceLogic.isSentenceCard(current);
@@ -895,10 +895,16 @@ function selectHandwritingSelfAssessment(correct) {
   $$(ids.needsCorrection).disabled = true;
   $$(ids.status).textContent = currentModule === 'verb'
     ? (handwritingFirstSelfAssessment ? '已记录：第一次手写正确，可以选择复习难度。' : '已记录：第一次需要订正，可以选择复习难度。')
-    : (handwritingFirstSelfAssessment ? '已记录：第一次手写正确。请在答案显示的学习页空白处再写一次。' : '已记录：第一次需要订正。请在答案显示的学习页空白处再写一次。');
+    : (handwritingFirstSelfAssessment ? '已记录：第一次手写正确，可以直接选择复习难度。' : '已记录：第一次需要订正，请重新输入一次。');
   $$(ids.status).className = `message ${handwritingFirstSelfAssessment ? 'success' : ''}`.trim();
   if (currentModule === 'verb') {
     $$('#ratingBlock').classList.remove('hidden');
+  } else if (handwritingFirstSelfAssessment) {
+    $$('#vocabSecondCheck').classList.add('hidden');
+    $$('#vocabRatingTitle').classList.remove('hidden');
+    $$('#vocabRatings').classList.remove('hidden');
+    resizeHandwritingBoard('first');
+    updateHandwritingStatus('first');
   } else renderSecondInput();
 }
 function focusFirstBlank(stage) {
@@ -937,16 +943,17 @@ function revealVocabAnswer() {
     currentQuestionCorrect = results.every(Boolean);
     handwritingFirstSelfAssessment = currentQuestionCorrect;
     if (!sentence) $$('#letterInputs').classList.add(currentQuestionCorrect ? 'correct' : 'incorrect');
-    $$('#resultText').textContent = currentQuestionCorrect ? '首次回答正确！先看着答案，再输入一次。' : '对照完整答案，先看着答案，再输入一次。';
+    $$('#resultText').textContent = currentQuestionCorrect ? '首次回答正确！可以直接选择复习难度。' : '首次回答有误。请对照完整答案，再输入一次。';
     $$('#resultText').className = currentQuestionCorrect ? 'right' : 'wrong';
   } else {
-    $$('#resultText').textContent = '答案已显示。请明确选择第一次手写是否正确，再进行第二次输入。';
+    $$('#resultText').textContent = '答案已显示。请确认第一次手写是否正确；只有写错时才需要订正。';
     $$('#resultText').className = '';
     document.querySelectorAll('#sentenceFirstInputs .sentence-card-input, #letterInputs .letter-cell, #spellingVariants button').forEach(input => { input.disabled = true; });
   }
   $$('#vocabWord').textContent = current.word;
   $$('#vocabPronunciation').textContent = `${current.pronunciation || '—'} · ${current.partOfSpeech || '—'}`;
   $$('#vocabEnglishExample').textContent = current.englishExample;
+  $$('#vocabChineseExampleAnswer').textContent = current.chineseExample || '—';
   $$('#backMetadata').innerHTML = metadataHtml(current, currentModule, false);
   $$('#vocabBack').classList.toggle('hidden', sentence);
   $$('#sentenceBack').classList.toggle('hidden', !sentence);
@@ -956,7 +963,14 @@ function revealVocabAnswer() {
   $$('#vocabAnswerContent').classList.remove('hidden');
   $$('#vocabRatings').classList.add('hidden');
   setSelfAssessmentVisible(firstAnswerSource === 'handwriting');
-  if (firstAnswerSource === 'keyboard') renderSecondInput();
+  if (firstAnswerSource === 'keyboard' && !currentQuestionCorrect) renderSecondInput();
+  else if (firstAnswerSource === 'keyboard') {
+    $$('#vocabSecondCheck').classList.add('hidden');
+    $$('#vocabRatingTitle').classList.remove('hidden');
+    $$('#vocabRatings').classList.remove('hidden');
+    resizeHandwritingBoard('first');
+    updateHandwritingStatus('first');
+  }
   else {
     $$('#vocabSecondCheck').classList.add('hidden');
     resizeHandwritingBoard('first');
@@ -999,6 +1013,7 @@ function submitVocabSecond() {
   $$('#secondAnswerResult').textContent = keyboard.hasAny ? (secondQuestionCorrect ? '第二次输入正确，可以选择复习难度。' : '第二次输入已提交，请对照答案后选择复习难度。') : '第二次手写已提交，可以选择复习难度。';
   $$('#secondAnswerResult').className = !keyboard.hasAny || secondQuestionCorrect ? 'message success' : 'message';
   $$('#secondAnswerButton').disabled = true;
+  $$('#vocabRatingTitle').classList.remove('hidden');
   $$('#vocabRatings').classList.remove('hidden');
 }
 function hideAndClearHandwriting() { handwritingLogic.clear(handwritingBoards.first); handwritingLogic.clear(handwritingBoards.second); const canvas = $$('#handwritingOverlay'); canvas?.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height); $$('#handwritingTools')?.classList.add('hidden'); canvas?.classList.add('hidden'); }
@@ -1072,7 +1087,7 @@ function renderLetterInputs(variantIndex, stage = 'first') {
   cells[0]?.focus();
 }
 async function rateVocab(rating) {
-  if (!current || vocabSaving || !practiceLogic.canRateVocabulary(currentModule, checked, secondAnswerSubmitted)) return;
+  if (!current || vocabSaving || !practiceLogic.canRateVocabulary(currentModule, checked, currentQuestionCorrect, secondAnswerSubmitted)) return;
   vocabSaving = true;
   const buttons = [...document.querySelectorAll('[data-vocab-rating], #backButton, #accountButton')];
   buttons.forEach(button => { button.disabled = true; });

@@ -42,9 +42,9 @@
     if (isSentenceCard(entry) && Array.isArray(entry.sentenceParts)) return entry.sentenceParts;
     return [{ prompt: entry?.chineseExample || '', answers: Array.isArray(entry?.answerVariants) ? entry.answerVariants : [entry?.answer || entry?.word || ''] }];
   }
-  function requiresSecondInput(module) { return isVocabModule(module); }
-  function canRateVocabulary(module, firstSubmitted, secondSubmitted) {
-    return Boolean(firstSubmitted) && (!requiresSecondInput(module) || Boolean(secondSubmitted));
+  function requiresSecondInput(module, firstCorrect) { return isVocabModule(module) && firstCorrect === false; }
+  function canRateVocabulary(module, firstSubmitted, firstCorrect, secondSubmitted) {
+    return Boolean(firstSubmitted) && (!requiresSecondInput(module, firstCorrect) || Boolean(secondSubmitted));
   }
   function selectUnits(source, state, units) {
     state.units = new Set(units);

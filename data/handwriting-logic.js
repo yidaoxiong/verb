@@ -15,7 +15,7 @@
     return { width, height, ratio, pixelWidth: Math.max(1, Math.round(width * ratio)), pixelHeight: Math.max(1, Math.round(height * ratio)) };
   }
   function canWrite(stage, { checked = false, selfAssessment = null, submitted = false, current = true } = {}) {
-    return Boolean(current) && (stage === 'first' ? !checked : checked && selfAssessment !== null && !submitted);
+    return Boolean(current) && (stage === 'first' ? !checked : checked && selfAssessment === false && !submitted);
   }
   function canSubmit(stage, board, state = {}) {
     return canWrite(stage, state) && hasInk(board);
